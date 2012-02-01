@@ -1,7 +1,5 @@
-#!/usr/bin/env xdg-open
-
 [Desktop Entry]
-Categories=;
+Categories=Network;WebBrowser;
 Comment=Access the Internet
 Comment[ar]=الدخول إلى الإنترنت
 Comment[ast]=Accesu a Internet
@@ -109,7 +107,7 @@ GenericName[vi]=Bộ duyệt Web
 GenericName[zh_CN]=网页浏览器
 GenericName[zh_HK]=網頁瀏覽器
 GenericName[zh_TW]=網頁瀏覽器
-Hidden=false
+Hidden=true
 Icon=chromium-browser
 MimeType=text/html;text/xml;application/xhtml_xml;
 Name=Chromium Web Browser
@@ -140,4 +138,3 @@ Terminal=false
 Type=Application
 Version=1.0
 X-MultipleArgs=false
-Name[en_US]=Web Browser
