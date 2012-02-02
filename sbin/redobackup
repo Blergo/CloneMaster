@@ -64,6 +64,11 @@ use constant RESTORE_STEPS => ( "Step 1: Select Source Drive",
 use constant USB_STEPS     => ( "Step 1: Select Destination Drive",
                                 "Step 2: Install to USB Drive" );
 
+sub default_share_name {
+    my $share = `cat /etc/redo_share`;
+    chomp $share;
+    return $share;
+}
 
 ##### Test code ########################################################
 #$ARGV[0] = 'restore';
@@ -226,7 +231,7 @@ sub backup_dest_network_changed {
         $server =~ s/\d+$//g;
       } else {
         # It's a manually-entered SMB share
-        $server = "//HOST/FOLDER";
+        $server = default_share_name;
       }
     } else {
       # It's an automatically-found share
@@ -588,7 +593,7 @@ sub restore_source_network_changed {
         $server =~ s/\d+$//g;
       } else {
         # It's a manually-entered SMB share
-        $server = "//HOST/FOLDER";
+        $server = default_share_name;
       }
     } else {
       # It's an automatically-found share
