@@ -113,6 +113,53 @@ sub main {
   Gtk2->main;
 }
 
+sub enable_next {
+  our $builder;
+  $builder->get_object('button_next')->set_sensitive(TRUE);
+  $builder->get_object('button_next')->grab_default();
+}
+
+sub disable_next {
+  our $builder;
+  $builder->get_object('button_next')->set_sensitive(FALSE);
+}
+
+sub hide_next {
+  our $builder;
+  $builder->get_object('button_next')->hide();
+  $builder->get_object('button_next')->set_sensitive(FALSE);
+}
+
+sub keypress_handler {
+  our $builder;
+  if ($builder->get_object('button_next')->sensitive) {
+    # Handle Enter
+    if ($_[1]->keyval eq 65293) { # Don't know any documented constant for this in perl
+      next_tab();
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+sub show {
+  $_[1]->show();
+}
+
+sub hide {
+  $_[1]->hide();
+}
+
+
+sub treeview_value {
+  my @mi = $_[0]->get_selection->get_selected;
+  return $mi[0]->get_value($mi[1],$_[1]);
+}
+
+sub treeview_dev {
+  return treeview_value($_[0],0);
+}
+
 
 ##### Backup Logic #####################################################
 sub backup_mode {
@@ -137,23 +184,23 @@ sub backup_step {
     find_local_drives();
     print_drive_list();
     set_drive_dropdown('backup_source');
-    $builder->get_object('backup_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 2) {
     # Backup Step 2
-    $status{'backup_drive'} = $builder->get_object('backup_source')->get_active_text();
+    $status{'backup_drive'} = treeview_dev($builder->get_object('backup_source'));
     set_partition_list('backup_partitions', $status{'backup_drive'});
-    $builder->get_object('backup_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 3) {
     # Backup Step 3
     backup_dest_changed();
     set_partition_dropdown('backup_dest_local');
     set_share_dropdown('backup_dest_network');
-    $builder->get_object('backup_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 4) {
     # Backup Step 4
-    $builder->get_object('backup_button_next')->set_sensitive(FALSE);
+    disable_next();
     if ($builder->get_object('backup_dest_use_local')->get_active()) {
-      my ($type, $source) = split(/\|/, $builder->get_object('backup_dest_local')->get_active_text());
+      my ($type, $source) = split(/\|/, treeview_dev($builder->get_object('backup_dest_local')));
       $status{'mount_type'} = $type;
       $status{'mount_source'} = $source;
     } else {
@@ -164,6 +211,7 @@ sub backup_step {
       $status{'mount_pass'} = $builder->get_object('backup_dest_pass')->get_text();
       $status{'mount_domain'} = $builder->get_object('backup_dest_domain')->get_text();
     }
+    enable_next();
     my $mount_ok = mount_data();
     if ($mount_ok==0) {
       message_box("Could not access the destination drive. If the device is shared on a network, ensure that the username and password you provided are correct and try again.");
@@ -171,11 +219,11 @@ sub backup_step {
       set_subtitle((BACKUP_STEPS)[2]);
     } else  {
       $builder->get_object('backup_folder')->set_text('/');
+      disable_next();
       $builder->get_object('backup_folder_browse')->grab_focus();
       my $free_mb = get_free_space(1);
       if ($free_mb < 1000) { message_box("Warning! This drive has only ".$free_mb."MB of free space. Make sure your backup will fit."); }
     }
-    $builder->get_object('backup_button_next')->set_sensitive(TRUE);
   } elsif ($step == 5) {
     # Backup Step 5
     my (undef,undef,undef,$d,$m,$y,undef,undef,undef) = localtime(time);
@@ -184,10 +232,10 @@ sub backup_step {
     $d = sprintf("%02d", $d);
     $builder->get_object('backup_name')->set_text("$y$m$d");
     $builder->get_object('backup_name')->grab_focus();
-    $builder->get_object('backup_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 6) {
     # Backup Step 6
-    $builder->get_object('backup_button_next')->hide();
+    hide_next();
     # Start the process
     refresh_window();
     sleep(0.25);
@@ -424,7 +472,7 @@ sub update_backup_progress {
         set_status("Operation completed successfully.");
         my @lines = split(/\n/, $data);
         my $start = FALSE;
-        $builder->get_object('backup_button_cancel')->set_label('Exit');
+        $builder->get_object('button_cancel')->set_label('Exit');
         refresh_window();
         # Unmount stuff
         system("sync");
@@ -462,11 +510,10 @@ sub backup_name_changed {
   $backup_name =~ s/[^\w|-]|_+//g;
   $builder->get_object('backup_name')->set_text($backup_name);
   if ($backup_name ne '') {
-    $val = TRUE;  
+    enable_next();
   } else {
-    $val = FALSE;
+    disable_next();
   }
-  $builder->get_object('backup_button_next')->set_sensitive($val);
 }
 
 sub select_backup_folder {
@@ -500,6 +547,7 @@ sub select_backup_folder {
     $builder->get_object('backup_folder')->set_text($current_folder);
   }
   $folder_chooser->destroy();
+  enable_next();
 }
 
 
@@ -527,10 +575,10 @@ sub restore_step {
     find_local_drives();
     set_partition_dropdown('restore_source_local');
     set_share_dropdown('restore_source_network');
-    $builder->get_object('restore_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 2) {
     # Restore Step 2
-    $builder->get_object('restore_button_next')->set_sensitive(FALSE);
+    disable_next();
     if ($builder->get_object('restore_source_use_local')->get_active()) {
       my ($type, $source) = split(/\|/, $builder->get_object('restore_source_local')->get_active_text());
       $status{'mount_type'} = $type;
@@ -550,22 +598,23 @@ sub restore_step {
       set_subtitle((RESTORE_STEPS)[0]);
     } else  {
       $builder->get_object('restore_file')->set_current_folder(MOUNT_POINT);
+      $builder->get_object('restore_file')->grab_focus();
       $builder->get_object('restore_filefilter')->set_name('Backup Images');
       $builder->get_object('restore_filefilter')->add_pattern('*.backup');
     }
-    $builder->get_object('restore_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 3) {
     # Restore Step 4
     set_drive_dropdown('restore_dest');
-    $builder->get_object('restore_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 4) {
     # Restore Step 5
-    $builder->get_object('restore_button_next')->hide();
+    hide_next();
     $builder->get_object('restore_progress')->set_sensitive(FALSE);
     refresh_window();
     do_restore();
     refresh_window();
-    $builder->get_object('restore_button_cancel')->set_label('Exit');
+    $builder->get_object('button_cancel')->set_label('Exit');
   }
   refresh_window();
 }
@@ -621,15 +670,13 @@ sub restore_source_network_changed {
 sub restore_file_changed {
   # Make sure the restore file is valid
   our $builder;
-  my $val = FALSE;
   my $restore_file = $builder->get_object('restore_file')->get_filename();
   if (!defined($restore_file)) { $restore_file = ''; }
   if ($restore_file ne '') {
-    $val = TRUE;  
+    enable_next();
   } else {
-    $val = FALSE;
+    disable_next();
   }
-  $builder->get_object('restore_button_next')->set_sensitive($val);
 }
 
 sub do_restore {
@@ -640,7 +687,7 @@ sub do_restore {
   set_status("Preparing destination drive...");
   $builder->get_object('restore_progress')->set_sensitive(TRUE);
   my $src = $builder->get_object('restore_file')->get_filename();
-  my $dest_drive = $builder->get_object('restore_dest')->get_active_text();
+  my $dest_drive = treeview_dev($builder->get_object('restore_dest'));
   $src =~ s/\.backup$//g;
   $src =~ s/ /\\ /g;
   my $src_mbr = $src.'.mbr';
@@ -730,7 +777,7 @@ sub update_restore_progress {
   chomp($part);
   my ($dn, $pn) = get_drivenum_partnum($part); 
   my $src = $builder->get_object('restore_file')->get_filename();
-  my $dest_drive = $builder->get_object('restore_dest')->get_active_text();
+  my $dest_drive = treeview_dev($builder->get_object('restore_dest'));
   $src =~ s/\.backup$//g;
   $src =~ s/ /\\ /g;
   # See if the filehandle is open
@@ -847,7 +894,7 @@ sub update_restore_progress {
         set_status("Operation completed successfully.");
         my @lines = split(/\n/, $data);
         my $start = FALSE;
-        $builder->get_object('restore_button_cancel')->set_label('Exit');
+        $builder->get_object('button_cancel')->set_label('Exit');
         refresh_window();
         # Unmount stuff
         system("sync");
@@ -898,17 +945,17 @@ sub usb_step {
     # USB Step 1
     find_local_drives();
     set_usb_dropdown('usb_dest');
-    $builder->get_object('usb_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 2) {
     # USB Step 2
-    $builder->get_object('usb_button_next')->hide();
-    my $target = $builder->get_object('usb_dest')->get_active_text();
+    hide_next();
+    my $target = treeview_dev($builder->get_object('usb_dest'));
     my $response = get_confirmation("Are you sure you want to overwrite all data on $target?");
     if ($response eq 'yes') {
       do_install($cdrom);
       message_box("Your USB drive is ready!\n\nPlease remember that you may need to press a key while the computer is starting in order to boot from the USB device."); 
       system("notify-send -i ".APP_ICON." 'USB installation complete.'");
-      $builder->get_object('usb_button_cancel')->set_label('Exit');
+      $builder->get_object('button_cancel')->set_label('Exit');
     } else {
       on_main_app_destroy();
     }
@@ -919,7 +966,7 @@ sub usb_step {
 sub do_install {
   our $builder;
   my $cdrom = $_[0];
-  my $dev = "/dev/".$builder->get_object('usb_dest')->get_active_text();
+  my $dev = "/dev/".treeview_dev($builder->get_object('usb_dest'));
   my $mnt = "/mnt";
   my $isomnt = "$mnt/isomount";
   my $usbmnt = "$mnt/usbmount";
@@ -1132,6 +1179,8 @@ sub message_box {
 
 sub on_main_app_destroy {
   # Close the application and all backup binaries
+  # FIXME should save child PIDs and kill child processes instead.
+  # This makes Redo application unsuitable for general use outside a single purpose live CD.
   my $bins = `find /usr/sbin/ -type f -name 'partclone.*' -printf '%f\n'`;
   my @bins = split(/\n/, $bins);
   foreach (@bins) {
@@ -1261,7 +1310,7 @@ sub set_drive_dropdown {
   }
   my $num_drives = $mdl->iter_n_children();
   if ($num_drives==0) { fatal_crash('No drives available.'); }
-  $cbo->set_active(0);
+  $cbo->get_selection->select_iter($mdl->get_iter_first);
   set_busy(FALSE);
 }
 
@@ -1305,7 +1354,9 @@ sub set_partition_dropdown {
       }
     }
   }
-  $cbo->set_active(0);
+  if ($mdl->get_iter_first) {
+    $cbo->get_selection->select_iter($mdl->get_iter_first);
+  }
 }
 
 sub set_share_dropdown {  
