@@ -312,8 +312,8 @@ sub update_backup_progress {
     set_status("Preparing to create backup of Drive $dn, Part $pn...");
     print "*** Processing $part ($fs) using $tool...\n";
     system("umount /dev/$part 2>&1");
-    print "*** Executing: ( $tool -c -F -L /partclone.log -s /dev/$part | gzip -c --fast | split -d -a 3 -b 2048m - /$dest/$file"."_part$pn. ) 2>&1 |\n";
-    open $PROGRESS, "( $tool -c -F -L /partclone.log -s /dev/$part | gzip -c --fast | split -d -a 3 -b 2048m - /$dest/$file"."_part$pn. ) 2>&1 |";
+    print "*** Executing: ( $tool -c -F -L /$dest/$file"."_part$pn"."_partclone.log -s /dev/$part | gzip -c --fast | split -d -a 3 -b 2048m - /$dest/$file"."_part$pn. ) 2>&1 |\n";
+    open $PROGRESS, "( $tool -c -F -L /$dest/$file"."_part$pn"."_partclone.log -s /dev/$part | gzip -c --fast | split -d -a 3 -b 2048m - /$dest/$file"."_part$pn. ) 2>&1 |";
     sleep(0.5);
     return TRUE;
   } else {
