@@ -465,7 +465,9 @@ sub select_backup_folder {
   # Open the folder selection dialog
   our $builder;
   my $folder_chooser = Gtk2::FileChooserDialog->new("Select a Folder", $builder->get_object('main_app'), "select-folder", "Cancel" => "cancel", "Save Here" => "ok");
+  if (FALSE) {
   # The "Places" panel might be confusing for some, so let's remove it
+  # Don't do it. It crashes Redobackup on GTK 2.4.26+
   my @children = $folder_chooser->get_children();
   @children = $children[0]->get_children();
   @children = $children[0]->get_children();
@@ -473,6 +475,7 @@ sub select_backup_folder {
   @children = $children[0]->get_children();
   @children = $children[2]->get_children();  
   $children[0]->hide();
+  }
   $folder_chooser->set_modal(TRUE);
   $folder_chooser->set_current_folder(MOUNT_POINT."/".$builder->get_object('backup_folder')->get_text());
   $folder_chooser->maximize();
