@@ -376,7 +376,10 @@ sub update_backup_progress {
       # Reading super block
       print(">>> Calculating bitmap\n");
       set_status("Calculating bitmap for Drive $dn, Part $pn...");
-    } elsif ($data =~ m/Elapsed.+Rate.+/) {
+    } elsif ($data =~ m/current block.+total block.+/) {
+      # Secondary progress line introduced in partclone between 0.2.20 and 0.2.40
+      # Ignore.
+    } elsif ($data =~ m/Elapsed.+Remaining.+Completed.+/) {
       # Backup progress line
       $status{'frame'}++;
       if ($status{'frame'} >= 10) {
@@ -386,7 +389,12 @@ sub update_backup_progress {
       my $elapsed = substr($data,9,8);
       my $remaining = substr($data,30,8);
       my $pct = substr($data,50,6);
-      my $rate = substr($data,64,13);
+      my $rate;
+      if ($data =~ m/Rate/) {
+        $rate = substr($data,64,13);
+      } else {
+        $rate = substr($data,59,15); # byte/min is long
+      }
       $pct =~ s/\s+//g;
       $rate =~ s/\s+//g;
       print "Elapsed time: *$elapsed* Remaining: *$remaining* Percent: *$pct* Rate: *$rate*\n";
@@ -797,12 +805,20 @@ sub update_restore_progress {
       # Reading super block
       print(">>> Calculating bitmap\n");
       set_status("Calculating bitmap for Drive $dn, Part $pn...");
-    } elsif ($data =~ m/Elapsed.+Rate.+/) {
+    } elsif ($data =~ m/current block.+total block.+/) {
+      # Secondary progress line introduced in partclone between 0.2.20 and 0.2.40
+      # Ignore.
+    } elsif ($data =~ m/Elapsed.+Remaining.+Completed.+/) {
       # Restore progress line
       my $elapsed = substr($data,9,8);
       my $remaining = substr($data,30,8);
       my $pct = substr($data,50,6);
-      my $rate = substr($data,64,13);
+      my $rate;
+      if ($data =~ m/Rate/) {
+        $rate = substr($data,64,13);
+      } else {
+        $rate = substr($data,59,15); # byte/min is long
+      }
       $pct =~ s/\s+//g;
       $rate =~ s/\s+//g;
       print "Elapsed time: *$elapsed* Remaining: *$remaining* Percent: *$pct* Rate: *$rate*\n";
