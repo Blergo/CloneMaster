@@ -26,6 +26,7 @@ use Gtk2 '-init';
 use XML::Simple;
 use Gtk2::SimpleList;
 use IO::Handle;
+use File::Basename;
 
 
 ##### Constants found in our program ###################################
@@ -516,40 +517,60 @@ sub backup_name_changed {
   }
 }
 
-sub select_backup_folder {
-  # Open the folder selection dialog
+sub chooser_button_press { #swapped
   our $builder;
-  my $folder_chooser = Gtk2::FileChooserDialog->new("Select a Folder", $builder->get_object('main_app'), "select-folder", "Cancel" => "cancel", "Save Here" => "ok");
-  if (FALSE) {
-  # The "Places" panel might be confusing for some, so let's remove it
-  # Don't do it. It crashes Redobackup on GTK 2.4.26+
-  my @children = $folder_chooser->get_children();
-  @children = $children[0]->get_children();
-  @children = $children[0]->get_children();
-  @children = $children[0]->get_children();
-  @children = $children[0]->get_children();
-  @children = $children[2]->get_children();  
-  $children[0]->hide();
+  my $entry = $_[1]; # the entry to set
+  #my $button = $_[2] # the button pressed
+  my $chooser; my $path; my $dir; my $fname; my $dirselect = FALSE;
+  if ($entry == $builder->get_object('backup_folder')) {
+    $chooser = Gtk2::FileChooserDialog->new("Select a Folder", $builder->get_object('main_app'), "select-folder", "Cancel" => "cancel", "Save Here" => "ok");
+    $dirselect = TRUE;
+  } else {
+    $builder->get_object('restore_filefilter')->set_name('Backup Images');
+    $builder->get_object('restore_filefilter')->add_pattern('*.backup');
+    $chooser = Gtk2::FileChooserDialog->new("Select a Backup File", $builder->get_object('main_app'), "open", "Cancel" => "cancel", "Open" => "ok");
+    $chooser->set_filter($builder->get_object("restore_filefilter"));
   }
-  $folder_chooser->set_modal(TRUE);
-  $folder_chooser->set_current_folder(MOUNT_POINT."/".$builder->get_object('backup_folder')->get_text());
-  $folder_chooser->maximize();
-  my $response = $folder_chooser->run();
+  $chooser->set_modal(TRUE);
+  $path = MOUNT_POINT."/".$entry->get_text();
+  if ($dirselect) {
+      $chooser->set_current_folder($path);
+  } else {
+    if (-d $path ) {
+      $chooser->set_current_folder($path);
+    } else {
+      ($fname,$dir) = fileparse($path);
+      $chooser->set_current_folder($dir);
+      $chooser->set_filename($path);
+    }
+  }
+  $chooser->maximize();
+  my $response = $chooser->run();
   if ($response eq 'ok') {
-    my $current_folder = $folder_chooser->get_current_folder();
-    if (substr($current_folder,0,length(MOUNT_POINT)) eq MOUNT_POINT) {
-      $current_folder = substr($current_folder,length(MOUNT_POINT));
-      if ($current_folder eq '') { $current_folder = '/'; }
+    $path = $chooser->get_current_folder();
+    if (substr($path,0,length(MOUNT_POINT)) eq MOUNT_POINT) {
+      $dir = substr($path,length(MOUNT_POINT));
+      if ($dir eq '') { $dir = '/'; }
     } else {
       error_message("You must select a folder inside '".MOUNT_POINT."'.".chr(13).chr(13)."Please select a different folder.");
-      $current_folder = '/';
+      $dir = '/';
     }
-    $builder->get_object('backup_folder')->set_text($current_folder);
+    if ($dirselect) {
+      enable_next();
+    } else {
+      $path = $chooser->get_filename;
+      $fname = basename($path);
+      if ( ! -r $path) { #FIXME check that this is an actual backup file
+        error_message("Cannot access the file $dir/$fname.");
+      } else {
+        $dir = "$dir/$fname";
+        enable_next();
+      }
+    }
+    $entry->set_text($dir);
   }
-  $folder_chooser->destroy();
-  enable_next();
+  $chooser->destroy();
 }
-
 
 ##### Restore Logic ####################################################
 sub restore_mode {
@@ -596,13 +617,11 @@ sub restore_step {
       message_box("Could not access the source drive. If the device is shared on a network, ensure that the username and password you provided are correct and try again.");
       $step = $builder->get_object('restore_tabs')->set_current_page(0);
       set_subtitle((RESTORE_STEPS)[0]);
+      enable_next();
     } else  {
-      $builder->get_object('restore_file')->set_current_folder(MOUNT_POINT);
-      $builder->get_object('restore_file')->grab_focus();
-      $builder->get_object('restore_filefilter')->set_name('Backup Images');
-      $builder->get_object('restore_filefilter')->add_pattern('*.backup');
+      $builder->get_object('restore_file')->set_text('*.backup');
+      $builder->get_object('restore_file_browse')->grab_focus();
     }
-    enable_next();
   } elsif ($step == 3) {
     # Restore Step 4
     set_drive_dropdown('restore_dest');
@@ -686,7 +705,7 @@ sub do_restore {
   our $PROGRESS;
   set_status("Preparing destination drive...");
   $builder->get_object('restore_progress')->set_sensitive(TRUE);
-  my $src = $builder->get_object('restore_file')->get_filename();
+  my $src = MOUNT_POINT.$builder->get_object('restore_file')->get_text();
   my $dest_drive = treeview_dev($builder->get_object('restore_dest'));
   $src =~ s/\.backup$//g;
   $src =~ s/ /\\ /g;
@@ -776,7 +795,7 @@ sub update_restore_progress {
   my $part = $status{'part_list'}[$status{'current_part'}];
   chomp($part);
   my ($dn, $pn) = get_drivenum_partnum($part); 
-  my $src = $builder->get_object('restore_file')->get_filename();
+  my $src = MOUNT_POINT.$builder->get_object('restore_file')->get_text();
   my $dest_drive = treeview_dev($builder->get_object('restore_dest'));
   $src =~ s/\.backup$//g;
   $src =~ s/ /\\ /g;

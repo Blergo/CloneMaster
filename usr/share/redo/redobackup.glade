@@ -833,8 +833,8 @@ The folder a backup is saved in is usually a description of the computer, e.g. &
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">False</property>
                                                     <property name="use_action_appearance">False</property>
-                                                    <signal name="pressed" handler="select_backup_folder" swapped="no"/>
-                                                    <signal name="clicked" handler="select_backup_folder" swapped="no"/>
+                                                    <signal name="pressed" handler="chooser_button_press" object="backup_folder" swapped="yes"/>
+                                                    <signal name="clicked" handler="chooser_button_press" object="backup_folder" swapped="yes"/>
                                                   </object>
                                                   <packing>
                                                     <property name="expand">False</property>
@@ -1471,11 +1471,12 @@ You may only use letters, numbers, and dashes in your backup name.</property>
                                             <property name="can_focus">False</property>
                                             <property name="yalign">1</property>
                                             <property name="ypad">20</property>
-                                            <property name="label" translatable="yes">Click the box below to select the image file to restore from.</property>
+                                            <property name="label" translatable="yes">Click &lt;b&gt;Browse&lt;/b&gt; to choose the image to restore from.</property>
+                                            <property name="use_markup">True</property>
                                             <property name="wrap">True</property>
                                           </object>
                                           <packing>
-                                            <property name="expand">False</property>
+                                            <property name="expand">True</property>
                                             <property name="fill">True</property>
                                             <property name="position">0</property>
                                           </packing>
@@ -1488,13 +1489,44 @@ You may only use letters, numbers, and dashes in your backup name.</property>
                                             <property name="xscale">0.85000002384185791</property>
                                             <property name="yscale">0</property>
                                             <child>
-                                              <object class="GtkFileChooserButton" id="restore_file">
+                                              <object class="GtkHBox" id="restore_file_hbox">
                                                 <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="create_folders">False</property>
-                                                <property name="filter">restore_filefilter</property>
-                                                <property name="title" translatable="yes">Select Backup Image</property>
-                                                <signal name="selection-changed" handler="restore_file_changed" swapped="no"/>
+                                                <property name="can_focus">False</property>
+                                                <child>
+                                                  <object class="GtkEntry" id="restore_file">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="editable">False</property>
+                                                    <property name="activates_default">True</property>
+                                                    <property name="primary_icon_activatable">False</property>
+                                                    <property name="secondary_icon_activatable">False</property>
+                                                    <property name="primary_icon_sensitive">True</property>
+                                                    <property name="secondary_icon_sensitive">True</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="expand">True</property>
+                                                    <property name="fill">True</property>
+                                                    <property name="padding">2</property>
+                                                    <property name="position">0</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkButton" id="restore_file_browse">
+                                                    <property name="label" translatable="yes">Browse...</property>
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="receives_default">False</property>
+                                                    <property name="use_action_appearance">False</property>
+                                                    <signal name="pressed" handler="chooser_button_press" object="restore_file" swapped="yes"/>
+                                                    <signal name="clicked" handler="chooser_button_press" object="restore_file" swapped="yes"/>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="fill">True</property>
+                                                    <property name="padding">2</property>
+                                                    <property name="position">1</property>
+                                                  </packing>
+                                                </child>
                                               </object>
                                             </child>
                                           </object>
