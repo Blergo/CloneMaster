@@ -368,11 +368,10 @@ sub do_backup {
   die "fdisk units must be sectors.\n" unless (fdisk_units($ptab) eq 'sectors');
   print "\t* MBR and partition table of $src_drive saved to $dest\n";
   # Save size of source drive in blocks
-  my $bd = `fdisk -l $src_drive | grep '$src_drive:'`;
-  my (undef, $bytes) = split(", ", $bd);
+  my $bytes = `/sbin/blockdev --getsize64 $src_drive`;
   $bytes =~ s/\D//g;
   my $ptab_bytes = max(values partends($ptab));
-  die "fdisk reports smaller drive size $bytes than determined from partition table $ptab_bytes\n" unless $bytes >= $ptab_bytes;
+  die "blockdev reports smaller drive size $bytes than determined from partition table $ptab_bytes\n" unless $bytes >= $ptab_bytes;
   $bytes = $ptab_bytes;
   system("echo $bytes > $dest/$file.size");
   print "\t* Size of $src_drive ($bytes bytes) saved to $dest/$file.size\n";
@@ -796,8 +795,7 @@ sub do_restore {
     $src_bytes = $src_bytes_fdisk;
     print "*** Size of original drive (from partition table): $src_bytes bytes\n";
   }
-  my $bd = `fdisk -l /dev/$dest_drive | grep '/dev/$dest_drive:'`;
-  my (undef, $dest_bytes) = split(", ", $bd);
+  my $dest_bytes = `/sbin/blockdev --getsize64 /dev/$dest_drive`;
   $dest_bytes =~ s/\D//g;
   print "*** Size of destination drive: $dest_bytes bytes\n";
   if ($src_bytes > $dest_bytes) {
