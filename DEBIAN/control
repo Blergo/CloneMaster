@@ -1,7 +1,7 @@
 Package: redobackup
 Version: 1.0.2-1
 Maintainer: Michal Suchanek <hramrach@gmail.com>
-Depends: libgtk2-perl, libxml-simple-perl, fsarchiver
+Depends: libgtk2-perl, libxml-simple-perl, fsarchiver, libmethod-signatures-simple-perl
 Recommends: os-prober
 Architecture: all
 License: GPL3
