@@ -253,7 +253,8 @@ sub backup_step {
     # Backup Step 4
     disable_next();
     if ($builder->get_object('backup_dest_use_local')->get_active()) {
-      my ($type, $source) = split(/\|/, treeview_dev($builder->get_object('backup_dest_local')));
+      my ($model, $iter) = $builder->get_object('backup_dest_local')->get_selection()->get_selected();
+      my ($type, $source) = split(/\|/, ($model->get_value($iter,0))[0]);
       $status{'mount_type'} = $type;
       $status{'mount_source'} = $source;
     } else {
@@ -657,7 +658,8 @@ sub restore_step {
     # Restore Step 2
     disable_next();
     if ($builder->get_object('restore_source_use_local')->get_active()) {
-      my ($type, $source) = split(/\|/, $builder->get_object('restore_source_local')->get_active_text());
+      my ($model, $iter) = $builder->get_object('restore_source_local')->get_selection()->get_selected();
+      my ($type, $source) = split(/\|/, ($model->get_value($iter,0))[0]);
       $status{'mount_type'} = $type;
       $status{'mount_source'} = $source;
     } else {
