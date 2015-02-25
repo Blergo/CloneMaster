@@ -67,9 +67,14 @@ use constant USB_STEPS     => ( "Step 1: Select Destination Drive",
                                 "Step 2: Install to USB Drive" );
 
 sub default_share_name {
-    my $share = `cat /etc/redo_share`;
+    my $share = `cat /etc/redo/share`;
     chomp $share;
     return $share;
+}
+
+sub allow_source_overwrite {
+    my $overwrite = not (-e "/etc/redo/no_source_overwrite");
+    return $overwrite;
 }
 
 func max(@values) {
@@ -777,7 +782,12 @@ sub do_restore {
   $src_drive =~ s/\d//g;
   print "Comparing $src_drive to $dest_drive...\n";
   if ($src_drive eq $dest_drive) {
-    my $response = get_confirmation("Are you sure you want to restore the backup to the same drive the source image is located on?\n\nUnless you know what you are doing, this will result in loss of all data on the drive, including the backup image!");
+    my $response = 'no';
+    if (allow_source_overwrite) {
+      $response = get_confirmation("Are you sure you want to restore the backup to the same drive the source image is located on?\n\nUnless you know what you are doing, this will result in loss of all data on the drive, including the backup image!");
+    } else {
+      error_message("Not restoring to the source drive!");
+    }
     if ($response ne 'yes') {
       on_main_app_destroy();
       die("Aborting.\n");
