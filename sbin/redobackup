@@ -362,15 +362,14 @@ sub do_backup {
   my $dest = MOUNT_POINT.$builder->get_object('backup_folder')->get_text();
   print "*** Backup $src to $dest ***\n\n";
   $dest =~ s/\/$//;
-  $dest =~ s/ /\\ /g;
   my $file = $builder->get_object('backup_name')->get_text();
   my $src_drive = $src;
   $src_drive =~ s/\d//g;
   $src_drive = "/dev/".$src_drive;
   # Save MBR
-  system("dd if=$src_drive of=$dest/$file.mbr bs=32768 count=1");
-  system("sfdisk -dx $src_drive > $dest/$file.sfdisk");
-  my $ptab = `sfdisk -dx $src_drive`;
+  system("dd if=\Q$src_drive\E of=\Q$dest/$file.mbr\E bs=32768 count=1");
+  system("sfdisk -dx \Q$src_drive\E > \Q$dest/$file.sfdisk\E");
+  my $ptab = `sfdisk -dx \Q$src_drive\E`;
   die "fdisk units must be sectors.\n" unless (fdisk_units($ptab) eq 'sectors');
   print "\t* MBR and partition table of $src_drive saved to $dest\n";
   # Save size of source drive in blocks
@@ -379,7 +378,7 @@ sub do_backup {
   my $ptab_bytes = max(values partends($ptab));
   die "blockdev reports smaller drive size $bytes than determined from partition table $ptab_bytes\n" unless $bytes >= $ptab_bytes;
   $bytes = $ptab_bytes;
-  system("echo $bytes > $dest/$file.size");
+  system("echo $bytes > \Q$dest/$file.size\E");
   print "\t* Size of $src_drive ($bytes bytes) saved to $dest/$file.size\n";
   # Save list of partitions we will be backing up
   my @partlist = get_selected_partitions('backup_partitions');
@@ -413,7 +412,6 @@ sub update_backup_progress {
   my $src = $status{'backup_drive'};
   my $dest = MOUNT_POINT.$builder->get_object('backup_folder')->get_text();
   $dest =~ s/\/$//;
-  $dest =~ s/ /\\ /g;
   my $file = $builder->get_object('backup_name')->get_text();
   my $fs = lc($drives{$src}{'parts'}{$pn}{'fstype'});
   # See if the filehandle is open
@@ -422,9 +420,9 @@ sub update_backup_progress {
     my $tool = which_backup_tool($fs);
     set_status("Preparing to create backup of Drive $dn, Part $pn...");
     print "*** Processing $part ($fs) using $tool...\n";
-    system("umount /dev/$part 2>&1");
-    print "*** Executing: ( $tool -c -F -L /$dest/$file"."_part$pn"."_partclone.log -s /dev/$part | gzip -c --fast | split -d -a 3 -b 2048m - /$dest/$file"."_part$pn. ) 2>&1 |\n";
-    open $PROGRESS, "( $tool -c -F -L /$dest/$file"."_part$pn"."_partclone.log -s /dev/$part | gzip -c --fast | split -d -a 3 -b 2048m - /$dest/$file"."_part$pn. ) 2>&1 |";
+    system("umount \Q/dev/$part\E 2>&1");
+    print "*** Executing: ( $tool -c -F -L \Q$dest/$file\E_part$pn\_partclone.log -s \Q/dev/$part\E | gzip -c --fast | split -d -a 3 -b 2048m - \Q$dest/$file\E_part$pn. ) 2>&1 |\n";
+    open      $PROGRESS, "( $tool -c -F -L \Q$dest/$file\E_part$pn\_partclone.log -s \Q/dev/$part\E | gzip -c --fast | split -d -a 3 -b 2048m - \Q$dest/$file\E_part$pn. ) 2>&1 |";
     sleep(0.5);
     return TRUE;
   } else {
@@ -771,7 +769,6 @@ sub do_restore {
   my $src = MOUNT_POINT.$builder->get_object('restore_file')->get_text();
   my $dest_drive = treeview_dev($builder->get_object('restore_dest'));
   $src =~ s/\.backup$//g;
-  $src =~ s/ /\\ /g;
   my $src_mbr = $src.'.mbr';
   my $src_parts = $src.'.backup';
   $src_parts =~ s/\\//g;
@@ -822,20 +819,20 @@ sub do_restore {
     on_main_app_destroy();
     die("Aborting.\n");
   }
-  system("umount /mnt/$dest_drive?* 2>&1");
+  system("umount \Q/mnt/$dest_drive\E?* 2>&1");
   sleep(0.5);
   print "*** Writing MBR to $dest_drive\n";
   set_status("Writing master boot record to destination drive...");
-  system("dd of=/dev/$dest_drive if=$src_mbr bs=32768 count=1; sync;");
-  sleep(0.5);  
+  system("dd of=\Q/dev/$dest_drive\E if=\Q$src_mbr\E bs=32768 count=1; sync;");
+  sleep(0.5);
   print "*** Restoring partition table to $dest_drive\n";
   set_status("Writing extended partition table to destination drive...");
-  system("sfdisk -fx /dev/$dest_drive < $src_sfdisk; sync");
+  system("sfdisk -fx \Q/dev/$dest_drive\E < \Q$src_sfdisk\E; sync");
   sleep(0.5);
   print "*** Reloading partition table from $dest_drive\n";
   set_status("Reloading new partition table from destination drive...");
-  system("umount /mnt/$dest_drive?* 2>&1");
-  system("sfdisk -R /dev/$dest_drive");
+  system("umount \Q/mnt/$dest_drive\E?* 2>&1");
+  system("sfdisk -R \Q/dev/$dest_drive\E");
   sleep(1);
   $status{'start'} = time();
   $status{'part_list'} = \@partlist;
@@ -875,17 +872,18 @@ sub update_restore_progress {
   my $src = MOUNT_POINT.$builder->get_object('restore_file')->get_text();
   my $dest_drive = treeview_dev($builder->get_object('restore_dest'));
   $src =~ s/\.backup$//g;
-  $src =~ s/ /\\ /g;
   # See if the filehandle is open
   if (!defined($PROGRESS)) {
     # No command is being executed
     my $tool = "partclone.restore";
-    system("umount /mnt/$dest_drive$pn 2>&1; dd if=/dev/zero of=/dev/$dest_drive$pn bs=1K count=1000; sync");
+    my @srcfiles = glob("\Q$src\_part$pn\E.*");
+    @srcfiles = map(quotemeta, @srcfiles);
+    system("umount \Q/dev/$dest_drive$pn\E 2>&1; dd if=/dev/zero of=\Q/dev/$dest_drive$pn\E bs=1K count=1000; sync");
     set_status("Preparing to restore backup for Drive $dn, Part $pn...");
     print "*** Processing $dest_drive$pn using $tool...\n";
-    system("umount /dev/$dest_drive$pn 2>&1");
-    print "*** Executing: ( cat /$src"."_part$pn.* | gzip -d -c | $tool -F -L /partclone.log -O /dev/$dest_drive$pn ) 2>&1 |\n";
-    open $PROGRESS, "( cat /$src"."_part$pn.* | gzip -d -c | $tool -F -L /partclone.log -O /dev/$dest_drive$pn ) 2>&1 |";
+    system("umount \Q/dev/$dest_drive$pn\E 2>&1");
+    print "*** Executing: ( cat @srcfiles | gzip -d -c | $tool -F -L /partclone.log -O \Q/dev/$dest_drive$pn\E ) 2>&1 |\n";
+    open      $PROGRESS, "( cat @srcfiles | gzip -d -c | $tool -F -L /partclone.log -O \Q/dev/$dest_drive$pn\E ) 2>&1 |";
     sleep(0.5);
     return TRUE;
   } else {
@@ -1340,8 +1338,8 @@ sub mount_data {
     if (/DEV/) {
       # Mount a regular drive
       $status{'mount_source'} =~ s/\|//g;
-      system("mount /dev/$status{'mount_source'} ".MOUNT_POINT);
-      print "* Executing: mount /dev/$status{'mount_source'} ".MOUNT_POINT."\n";
+      system(            "mount \Q/dev/$status{'mount_source'}\E ".MOUNT_POINT);
+      print "* Executing: mount \Q/dev/$status{'mount_source'}\E ".MOUNT_POINT."\n";
     } elsif (/SMB/) {
       # Mount a network share
       my $args;
@@ -1363,7 +1361,7 @@ sub mount_data {
         # one locking up the application unless guest is specified.
         if ($status{'mount_pass'} eq '') { $args = "$args,guest"; }
       }
-      system("mount.cifs '$status{'mount_source'}' ".MOUNT_POINT." -o $args");
+      system("mount.cifs \Q$status{'mount_source'}\E ".MOUNT_POINT." -o $args");
       if ($tmpfile ne '') { system(("shred", "-u",  $tmpfile));}
       print "* Executing: mount.cifs '$status{'mount_source'}' ".MOUNT_POINT." -o $args\n";
     } elsif (/FTP/) {
@@ -1371,8 +1369,8 @@ sub mount_data {
       my $ftpargs = '';
       if ($status{'mount_user'} ne '') { $ftpargs = "-o user=".$status{'mount_user'}; }
       if ($status{'mount_pass'} ne '') { $ftpargs .= ":".$status{'mount_pass'}; }
-      system("curlftpfs $status{'mount_source'} ".MOUNT_POINT." $ftpargs");
-      print "* Executing: curlftpfs $status{'mount_source'} ".MOUNT_POINT." $ftpargs\n";
+      print "* Executing: curlftpfs \Q$status{'mount_source'}\E ".MOUNT_POINT." $ftpargs\n";
+      system(            "curlftpfs \Q$status{'mount_source'}\E ".MOUNT_POINT." $ftpargs");
     } else {
       fatal_crash("The device type '$status{'mount_type'}' is not valid.  Did you forget to select a backup location?");
     }
