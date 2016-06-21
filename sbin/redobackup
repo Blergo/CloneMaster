@@ -368,8 +368,8 @@ sub do_backup {
   $src_drive = "/dev/".$src_drive;
   # Save MBR
   system("dd if=\Q$src_drive\E of=\Q$dest/$file.mbr\E bs=32768 count=1");
-  system("sfdisk -dx \Q$src_drive\E > \Q$dest/$file.sfdisk\E");
-  my $ptab = `sfdisk -dx \Q$src_drive\E`;
+  system("sfdisk -d \Q$src_drive\E > \Q$dest/$file.sfdisk\E");
+  my $ptab = `sfdisk -d \Q$src_drive\E`;
   die "fdisk units must be sectors.\n" unless (fdisk_units($ptab) eq 'sectors');
   print "\t* MBR and partition table of $src_drive saved to $dest\n";
   # Save size of source drive in blocks
@@ -827,12 +827,12 @@ sub do_restore {
   sleep(0.5);
   print "*** Restoring partition table to $dest_drive\n";
   set_status("Writing extended partition table to destination drive...");
-  system("sfdisk -fx \Q/dev/$dest_drive\E < \Q$src_sfdisk\E; sync");
+  system("sfdisk -f \Q/dev/$dest_drive\E < \Q$src_sfdisk\E; sync");
   sleep(0.5);
   print "*** Reloading partition table from $dest_drive\n";
   set_status("Reloading new partition table from destination drive...");
   system("umount \Q/mnt/$dest_drive\E?* 2>&1");
-  system("sfdisk -R \Q/dev/$dest_drive\E");
+  system("partprobe \Q/dev/$dest_drive\E");
   sleep(1);
   $status{'start'} = time();
   $status{'part_list'} = \@partlist;
@@ -1075,7 +1075,7 @@ sub do_install {
   system("parted -s $dev set 1 boot on");
   $pgb->set_fraction(0.3);
   set_status("Refreshing partition table...");
-  system("sfdisk -R $dev");
+  system("partprobe $dev");
   $pgb->set_fraction(0.4);
   set_status("Formatting USB drive...");
   system("umount $dev?* 2>&1");

@@ -1,5 +1,5 @@
 # CloneMaster
-
+ 
 This is a continuation of Redo Backup. It is a work in progress.
 
 To build livecd:
@@ -8,7 +8,7 @@ To build livecd:
 
 2/ Enable root account "sudo psswd" and then login as root.
 
-3/ Install git, build-essential, autoconf, autogen, xorg, openbox. 
+3/ Install git, build-essential, autoconf, autogen, xorg, openbox, partclone, parted. 
 
 4/ Clone this git repository. 
 
