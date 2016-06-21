@@ -1,0 +1,6 @@
+?package(redobackup):\
+	needs="X11"\
+	section="Applications/System/Administration"\
+	title="ReDo backup and restore"\
+	command="su-to-root -X -c /sbin/redobackup"\
+	icon="/usr/share/pixmaps/redo-icon.png"

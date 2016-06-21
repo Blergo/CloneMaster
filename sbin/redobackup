@@ -26,6 +26,8 @@ use Gtk2 '-init';
 use XML::Simple;
 use Gtk2::SimpleList;
 use IO::Handle;
+use File::Basename;
+use Method::Signatures::Simple;
 
 
 ##### Constants found in our program ###################################
@@ -35,7 +37,6 @@ use constant MOUNT_POINT   => "/mnt/backup";
 use constant DATA_DIR      => "/usr/share/redo/";
 use constant APP_ICON      => DATA_DIR."redobackup-icon.png";
 use constant GLADE_UI      => "redobackup.glade";
-use constant MAX_WIDTH     => 96;
 use constant FS_SUPPORT    => ( "ext2",
                                 "ext3",
                                 "ext4",
@@ -65,6 +66,67 @@ use constant RESTORE_STEPS => ( "Step 1: Select Source Drive",
 use constant USB_STEPS     => ( "Step 1: Select Destination Drive",
                                 "Step 2: Install to USB Drive" );
 
+sub default_share_name {
+    my $share = `cat /etc/redo/share`;
+    chomp $share;
+    return $share;
+}
+
+sub allow_source_overwrite {
+    my $overwrite = not (-e "/etc/redo/no_source_overwrite");
+    return $overwrite;
+}
+
+func max(@values) {
+  if (!@values) { return -INF; }
+  my $max = $values[0];
+  foreach my $val (@values) {
+    if ($val > $max) { $max = $val ; }
+  }
+  return $max;
+}
+
+func fdisk_units($text) {
+  my @matches = ( $text =~ /unit: ([^[:space:]]+)/g );
+  my $count = @matches;
+  if (@matches  < 1) { return undef; }
+  if (@matches == 1) { return $matches[0]; }
+  my $same = 'TRUE'; foreach my $unit (@matches) { $same = ($same and ($unit eq $matches[0])); }
+  if ($same) { return $matches[0]; }
+  else { return undef; }
+}
+
+func parttab($text) {
+  my @text = split("\n", $text);
+  my %parts;
+  foreach my $line (@text) {
+    my @match = ($line =~ /^[[:blank:]]*(\/dev\/[[:alnum:]]+|-)[[:blank:]]+:[[:blank:]]*start=[[:blank:]]*([[:digit:]]+), size=[[:blank:]]*([[:digit:]]+), Id=[[:blank:]]*([[:xdigit:]]+)/);
+    if (@match && $match[3]) {
+      if (((length $match[0]) < 3) || !$match[2]) {
+        print "Error on line: " . $line;
+        print "\n";
+      }
+      my %res = (start => $match[1], length => $match[2], id => hex($match[3]), end => ($match[1]+$match[2]));
+      $parts{$match[0]}= \%res;
+    }
+  }
+  foreach my $part (keys %parts) {
+    print $part . " ";
+    foreach my $val (keys %{$parts{$part}}) {
+      print $val . ": " . ${$parts{$part}}{$val} ."\t";
+    }
+    print  "\n";
+  }
+  return \%parts;
+}
+
+func partends($text) {
+  my %parts = %{parttab($text)};
+  foreach my $part (keys %parts) {
+    $parts{$part} = ${$parts{$part}}{'end'} * 512;
+  }
+  return \%parts;
+}
 
 ##### Test code ########################################################
 #$ARGV[0] = 'restore';
@@ -109,6 +171,53 @@ sub main {
   Gtk2->main;
 }
 
+sub enable_next {
+  our $builder;
+  $builder->get_object('button_next')->set_sensitive(TRUE);
+  $builder->get_object('button_next')->grab_default();
+}
+
+sub disable_next {
+  our $builder;
+  $builder->get_object('button_next')->set_sensitive(FALSE);
+}
+
+sub hide_next {
+  our $builder;
+  $builder->get_object('button_next')->hide();
+  $builder->get_object('button_next')->set_sensitive(FALSE);
+}
+
+sub keypress_handler {
+  our $builder;
+  if ($builder->get_object('button_next')->sensitive) {
+    # Handle Enter
+    if ($_[1]->keyval eq 65293) { # Don't know any documented constant for this in perl
+      next_tab();
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+sub show {
+  $_[1]->show();
+}
+
+sub hide {
+  $_[1]->hide();
+}
+
+
+sub treeview_value {
+  my @mi = $_[0]->get_selection->get_selected;
+  return $mi[0]->get_value($mi[1],$_[1]);
+}
+
+sub treeview_dev {
+  return treeview_value($_[0],0);
+}
+
 
 ##### Backup Logic #####################################################
 sub backup_mode {
@@ -133,23 +242,24 @@ sub backup_step {
     find_local_drives();
     print_drive_list();
     set_drive_dropdown('backup_source');
-    $builder->get_object('backup_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 2) {
     # Backup Step 2
-    $status{'backup_drive'} = $builder->get_object('backup_source')->get_active_text();
+    $status{'backup_drive'} = treeview_dev($builder->get_object('backup_source'));
     set_partition_list('backup_partitions', $status{'backup_drive'});
-    $builder->get_object('backup_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 3) {
     # Backup Step 3
     backup_dest_changed();
     set_partition_dropdown('backup_dest_local');
     set_share_dropdown('backup_dest_network');
-    $builder->get_object('backup_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 4) {
     # Backup Step 4
-    $builder->get_object('backup_button_next')->set_sensitive(FALSE);
+    disable_next();
     if ($builder->get_object('backup_dest_use_local')->get_active()) {
-      my ($type, $source) = split(/\|/, $builder->get_object('backup_dest_local')->get_active_text());
+      my ($model, $iter) = $builder->get_object('backup_dest_local')->get_selection()->get_selected();
+      my ($type, $source) = split(/\|/, ($model->get_value($iter,0))[0]);
       $status{'mount_type'} = $type;
       $status{'mount_source'} = $source;
     } else {
@@ -160,6 +270,7 @@ sub backup_step {
       $status{'mount_pass'} = $builder->get_object('backup_dest_pass')->get_text();
       $status{'mount_domain'} = $builder->get_object('backup_dest_domain')->get_text();
     }
+    enable_next();
     my $mount_ok = mount_data();
     if ($mount_ok==0) {
       message_box("Could not access the destination drive. If the device is shared on a network, ensure that the username and password you provided are correct and try again.");
@@ -167,11 +278,11 @@ sub backup_step {
       set_subtitle((BACKUP_STEPS)[2]);
     } else  {
       $builder->get_object('backup_folder')->set_text('/');
+      disable_next();
       $builder->get_object('backup_folder_browse')->grab_focus();
       my $free_mb = get_free_space(1);
       if ($free_mb < 1000) { message_box("Warning! This drive has only ".$free_mb."MB of free space. Make sure your backup will fit."); }
     }
-    $builder->get_object('backup_button_next')->set_sensitive(TRUE);
   } elsif ($step == 5) {
     # Backup Step 5
     my (undef,undef,undef,$d,$m,$y,undef,undef,undef) = localtime(time);
@@ -180,10 +291,10 @@ sub backup_step {
     $d = sprintf("%02d", $d);
     $builder->get_object('backup_name')->set_text("$y$m$d");
     $builder->get_object('backup_name')->grab_focus();
-    $builder->get_object('backup_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 6) {
     # Backup Step 6
-    $builder->get_object('backup_button_next')->hide();
+    hide_next();
     # Start the process
     refresh_window();
     sleep(0.25);
@@ -227,7 +338,7 @@ sub backup_dest_network_changed {
         $server =~ s/\d+$//g;
       } else {
         # It's a manually-entered SMB share
-        $server = "//HOST/FOLDER";
+        $server = default_share_name;
       }
     } else {
       # It's an automatically-found share
@@ -251,20 +362,23 @@ sub do_backup {
   my $dest = MOUNT_POINT.$builder->get_object('backup_folder')->get_text();
   print "*** Backup $src to $dest ***\n\n";
   $dest =~ s/\/$//;
-  $dest =~ s/ /\\ /g;
   my $file = $builder->get_object('backup_name')->get_text();
   my $src_drive = $src;
   $src_drive =~ s/\d//g;
   $src_drive = "/dev/".$src_drive;
   # Save MBR
-  system("dd if=$src_drive of=$dest/$file.mbr bs=32768 count=1");
-  system("sfdisk -dx $src_drive > $dest/$file.sfdisk");
+  system("dd if=\Q$src_drive\E of=\Q$dest/$file.mbr\E bs=32768 count=1");
+  system("sfdisk -dx \Q$src_drive\E > \Q$dest/$file.sfdisk\E");
+  my $ptab = `sfdisk -dx \Q$src_drive\E`;
+  die "fdisk units must be sectors.\n" unless (fdisk_units($ptab) eq 'sectors');
   print "\t* MBR and partition table of $src_drive saved to $dest\n";
   # Save size of source drive in blocks
-  my $bd = `fdisk -l $src_drive | grep '$src_drive:'`;
-  my (undef, $bytes) = split(", ", $bd);
+  my $bytes = `/sbin/blockdev --getsize64 $src_drive`;
   $bytes =~ s/\D//g;
-  system("echo $bytes > $dest/$file.size");  
+  my $ptab_bytes = max(values partends($ptab));
+  die "blockdev reports smaller drive size $bytes than determined from partition table $ptab_bytes\n" unless $bytes >= $ptab_bytes;
+  $bytes = $ptab_bytes;
+  system("echo $bytes > \Q$dest/$file.size\E");
   print "\t* Size of $src_drive ($bytes bytes) saved to $dest/$file.size\n";
   # Save list of partitions we will be backing up
   my @partlist = get_selected_partitions('backup_partitions');
@@ -298,7 +412,6 @@ sub update_backup_progress {
   my $src = $status{'backup_drive'};
   my $dest = MOUNT_POINT.$builder->get_object('backup_folder')->get_text();
   $dest =~ s/\/$//;
-  $dest =~ s/ /\\ /g;
   my $file = $builder->get_object('backup_name')->get_text();
   my $fs = lc($drives{$src}{'parts'}{$pn}{'fstype'});
   # See if the filehandle is open
@@ -307,9 +420,9 @@ sub update_backup_progress {
     my $tool = which_backup_tool($fs);
     set_status("Preparing to create backup of Drive $dn, Part $pn...");
     print "*** Processing $part ($fs) using $tool...\n";
-    system("umount /dev/$part 2>&1");
-    print "*** Executing: ( $tool -c -F -L /partclone.log -s /dev/$part | gzip -c --fast | split -d -a 3 -b 2048m - /$dest/$file"."_part$pn. ) 2>&1 |\n";
-    open $PROGRESS, "( $tool -c -F -L /partclone.log -s /dev/$part | gzip -c --fast | split -d -a 3 -b 2048m - /$dest/$file"."_part$pn. ) 2>&1 |";
+    system("umount \Q/dev/$part\E 2>&1");
+    print "*** Executing: ( $tool -c -F -L \Q$dest/$file\E_part$pn\_partclone.log -s \Q/dev/$part\E | gzip -c --fast | split -d -a 3 -b 2048m - \Q$dest/$file\E_part$pn. ) 2>&1 |\n";
+    open      $PROGRESS, "( $tool -c -F -L \Q$dest/$file\E_part$pn\_partclone.log -s \Q/dev/$part\E | gzip -c --fast | split -d -a 3 -b 2048m - \Q$dest/$file\E_part$pn. ) 2>&1 |";
     sleep(0.5);
     return TRUE;
   } else {
@@ -372,7 +485,10 @@ sub update_backup_progress {
       # Reading super block
       print(">>> Calculating bitmap\n");
       set_status("Calculating bitmap for Drive $dn, Part $pn...");
-    } elsif ($data =~ m/Elapsed.+Rate.+/) {
+    } elsif ($data =~ m/current block.+total block.+/) {
+      # Secondary progress line introduced in partclone between 0.2.20 and 0.2.40
+      # Ignore.
+    } elsif ($data =~ m/Elapsed.+Remaining.+Completed.+/) {
       # Backup progress line
       $status{'frame'}++;
       if ($status{'frame'} >= 10) {
@@ -382,7 +498,12 @@ sub update_backup_progress {
       my $elapsed = substr($data,9,8);
       my $remaining = substr($data,30,8);
       my $pct = substr($data,50,6);
-      my $rate = substr($data,64,13);
+      my $rate;
+      if ($data =~ m/Rate/) {
+        $rate = substr($data,64,13);
+      } else {
+        $rate = substr($data,59,15); # byte/min is long
+      }
       $pct =~ s/\s+//g;
       $rate =~ s/\s+//g;
       print "Elapsed time: *$elapsed* Remaining: *$remaining* Percent: *$pct* Rate: *$rate*\n";
@@ -412,7 +533,7 @@ sub update_backup_progress {
         set_status("Operation completed successfully.");
         my @lines = split(/\n/, $data);
         my $start = FALSE;
-        $builder->get_object('backup_button_cancel')->set_label('Exit');
+        $builder->get_object('button_cancel')->set_label('Exit');
         refresh_window();
         # Unmount stuff
         system("sync");
@@ -450,43 +571,66 @@ sub backup_name_changed {
   $backup_name =~ s/[^\w|-]|_+//g;
   $builder->get_object('backup_name')->set_text($backup_name);
   if ($backup_name ne '') {
-    $val = TRUE;  
+    enable_next();
   } else {
-    $val = FALSE;
+    disable_next();
   }
-  $builder->get_object('backup_button_next')->set_sensitive($val);
 }
 
-sub select_backup_folder {
-  # Open the folder selection dialog
+sub chooser_button_press { #swapped
   our $builder;
-  my $folder_chooser = Gtk2::FileChooserDialog->new("Select a Folder", $builder->get_object('main_app'), "select-folder", "Cancel" => "cancel", "Save Here" => "ok");
-  # The "Places" panel might be confusing for some, so let's remove it
-  my @children = $folder_chooser->get_children();
-  @children = $children[0]->get_children();
-  @children = $children[0]->get_children();
-  @children = $children[0]->get_children();
-  @children = $children[0]->get_children();
-  @children = $children[2]->get_children();  
-  $children[0]->hide();
-  $folder_chooser->set_modal(TRUE);
-  $folder_chooser->set_current_folder(MOUNT_POINT."/".$builder->get_object('backup_folder')->get_text());
-  $folder_chooser->maximize();
-  my $response = $folder_chooser->run();
+  my $entry = $_[1]; # the entry to set
+  #my $button = $_[2] # the button pressed
+  my $chooser; my $path; my $dir; my $fname; my $dirselect = FALSE;
+  if ($entry == $builder->get_object('backup_folder')) {
+    $chooser = Gtk2::FileChooserDialog->new("Select a Folder", $builder->get_object('main_app'), "select-folder", "Cancel" => "cancel", "Save Here" => "ok");
+    $dirselect = TRUE;
+  } else {
+    $builder->get_object('restore_filefilter')->set_name('Backup Images');
+    $builder->get_object('restore_filefilter')->add_pattern('*.backup');
+    $chooser = Gtk2::FileChooserDialog->new("Select a Backup File", $builder->get_object('main_app'), "open", "Cancel" => "cancel", "Open" => "ok");
+    $chooser->set_filter($builder->get_object("restore_filefilter"));
+  }
+  $chooser->set_modal(TRUE);
+  $path = MOUNT_POINT."/".$entry->get_text();
+  if ($dirselect) {
+      $chooser->set_current_folder($path);
+  } else {
+    if (-d $path ) {
+      $chooser->set_current_folder($path);
+    } else {
+      ($fname,$dir) = fileparse($path);
+      $chooser->set_current_folder($dir);
+      $chooser->set_filename($path);
+    }
+  }
+  $chooser->maximize();
+  my $response = $chooser->run();
   if ($response eq 'ok') {
-    my $current_folder = $folder_chooser->get_current_folder();
-    if (substr($current_folder,0,length(MOUNT_POINT)) eq MOUNT_POINT) {
-      $current_folder = substr($current_folder,length(MOUNT_POINT));
-      if ($current_folder eq '') { $current_folder = '/'; }
+    $path = $chooser->get_current_folder();
+    if (substr($path,0,length(MOUNT_POINT)) eq MOUNT_POINT) {
+      $dir = substr($path,length(MOUNT_POINT));
+      if ($dir eq '') { $dir = '/'; }
     } else {
       error_message("You must select a folder inside '".MOUNT_POINT."'.".chr(13).chr(13)."Please select a different folder.");
-      $current_folder = '/';
+      $dir = '/';
     }
-    $builder->get_object('backup_folder')->set_text($current_folder);
+    if ($dirselect) {
+      enable_next();
+    } else {
+      $path = $chooser->get_filename;
+      $fname = basename($path);
+      if ( ! -r $path) { #FIXME check that this is an actual backup file
+        error_message("Cannot access the file $dir/$fname.");
+      } else {
+        $dir = "$dir/$fname";
+        enable_next();
+      }
+    }
+    $entry->set_text($dir);
   }
-  $folder_chooser->destroy();
+  $chooser->destroy();
 }
-
 
 ##### Restore Logic ####################################################
 sub restore_mode {
@@ -512,12 +656,13 @@ sub restore_step {
     find_local_drives();
     set_partition_dropdown('restore_source_local');
     set_share_dropdown('restore_source_network');
-    $builder->get_object('restore_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 2) {
     # Restore Step 2
-    $builder->get_object('restore_button_next')->set_sensitive(FALSE);
+    disable_next();
     if ($builder->get_object('restore_source_use_local')->get_active()) {
-      my ($type, $source) = split(/\|/, $builder->get_object('restore_source_local')->get_active_text());
+      my ($model, $iter) = $builder->get_object('restore_source_local')->get_selection()->get_selected();
+      my ($type, $source) = split(/\|/, ($model->get_value($iter,0))[0]);
       $status{'mount_type'} = $type;
       $status{'mount_source'} = $source;
     } else {
@@ -533,24 +678,23 @@ sub restore_step {
       message_box("Could not access the source drive. If the device is shared on a network, ensure that the username and password you provided are correct and try again.");
       $step = $builder->get_object('restore_tabs')->set_current_page(0);
       set_subtitle((RESTORE_STEPS)[0]);
+      enable_next();
     } else  {
-      $builder->get_object('restore_file')->set_current_folder(MOUNT_POINT);
-      $builder->get_object('restore_filefilter')->set_name('Backup Images');
-      $builder->get_object('restore_filefilter')->add_pattern('*.backup');
+      $builder->get_object('restore_file')->set_text('*.backup');
+      $builder->get_object('restore_file_browse')->grab_focus();
     }
-    $builder->get_object('restore_button_next')->set_sensitive(TRUE);
   } elsif ($step == 3) {
     # Restore Step 4
     set_drive_dropdown('restore_dest');
-    $builder->get_object('restore_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 4) {
     # Restore Step 5
-    $builder->get_object('restore_button_next')->hide();
+    hide_next();
     $builder->get_object('restore_progress')->set_sensitive(FALSE);
     refresh_window();
     do_restore();
     refresh_window();
-    $builder->get_object('restore_button_cancel')->set_label('Exit');
+    $builder->get_object('button_cancel')->set_label('Exit');
   }
   refresh_window();
 }
@@ -589,7 +733,7 @@ sub restore_source_network_changed {
         $server =~ s/\d+$//g;
       } else {
         # It's a manually-entered SMB share
-        $server = "//HOST/FOLDER";
+        $server = default_share_name;
       }
     } else {
       # It's an automatically-found share
@@ -606,15 +750,13 @@ sub restore_source_network_changed {
 sub restore_file_changed {
   # Make sure the restore file is valid
   our $builder;
-  my $val = FALSE;
   my $restore_file = $builder->get_object('restore_file')->get_filename();
   if (!defined($restore_file)) { $restore_file = ''; }
   if ($restore_file ne '') {
-    $val = TRUE;  
+    enable_next();
   } else {
-    $val = FALSE;
+    disable_next();
   }
-  $builder->get_object('restore_button_next')->set_sensitive($val);
 }
 
 sub do_restore {
@@ -624,10 +766,9 @@ sub do_restore {
   our $PROGRESS;
   set_status("Preparing destination drive...");
   $builder->get_object('restore_progress')->set_sensitive(TRUE);
-  my $src = $builder->get_object('restore_file')->get_filename();
-  my $dest_drive = $builder->get_object('restore_dest')->get_active_text();
+  my $src = MOUNT_POINT.$builder->get_object('restore_file')->get_text();
+  my $dest_drive = treeview_dev($builder->get_object('restore_dest'));
   $src =~ s/\.backup$//g;
-  $src =~ s/ /\\ /g;
   my $src_mbr = $src.'.mbr';
   my $src_parts = $src.'.backup';
   $src_parts =~ s/\\//g;
@@ -638,7 +779,12 @@ sub do_restore {
   $src_drive =~ s/\d//g;
   print "Comparing $src_drive to $dest_drive...\n";
   if ($src_drive eq $dest_drive) {
-    my $response = get_confirmation("Are you sure you want to restore the backup to the same drive the source image is located on?\n\nUnless you know what you are doing, this will result in loss of all data on the drive, including the backup image!");
+    my $response = 'no';
+    if (allow_source_overwrite) {
+      $response = get_confirmation("Are you sure you want to restore the backup to the same drive the source image is located on?\n\nUnless you know what you are doing, this will result in loss of all data on the drive, including the backup image!");
+    } else {
+      error_message("Not restoring to the source drive!");
+    }
     if ($response ne 'yes') {
       on_main_app_destroy();
       die("Aborting.\n");
@@ -648,8 +794,17 @@ sub do_restore {
   my $src_bytes = `cat $src_size`;
   $src_bytes =~ s/\D//g;
   print "*** Size of original drive: $src_bytes bytes\n";
-  my $bd = `fdisk -l /dev/$dest_drive | grep '/dev/$dest_drive:'`;
-  my (undef, $dest_bytes) = split(", ", $bd);
+  my $src_fdisk_text = `cat $src_sfdisk`;
+  if ('sectors' eq fdisk_units($src_fdisk_text)) {
+    print "*** Reading original drive partition table.\n";
+    my $src_bytes_fdisk = max(values partends($src_fdisk_text));
+    if ($src_bytes_fdisk > $src_bytes) {
+      print "Warning: stored size of original drive $src_bytes is smaller than size calculated from original partition table $src_bytes_fdisk !\n";
+    }
+    $src_bytes = $src_bytes_fdisk;
+    print "*** Size of original drive (from partition table): $src_bytes bytes\n";
+  }
+  my $dest_bytes = `/sbin/blockdev --getsize64 /dev/$dest_drive`;
   $dest_bytes =~ s/\D//g;
   print "*** Size of destination drive: $dest_bytes bytes\n";
   if ($src_bytes > $dest_bytes) {
@@ -664,20 +819,20 @@ sub do_restore {
     on_main_app_destroy();
     die("Aborting.\n");
   }
-  system("umount /mnt/$dest_drive?* 2>&1");
+  system("umount \Q/mnt/$dest_drive\E?* 2>&1");
   sleep(0.5);
   print "*** Writing MBR to $dest_drive\n";
   set_status("Writing master boot record to destination drive...");
-  system("dd of=/dev/$dest_drive if=$src_mbr bs=32768 count=1; sync;");
-  sleep(0.5);  
+  system("dd of=\Q/dev/$dest_drive\E if=\Q$src_mbr\E bs=32768 count=1; sync;");
+  sleep(0.5);
   print "*** Restoring partition table to $dest_drive\n";
   set_status("Writing extended partition table to destination drive...");
-  system("sfdisk -fx /dev/$dest_drive < $src_sfdisk; sync");
+  system("sfdisk -fx \Q/dev/$dest_drive\E < \Q$src_sfdisk\E; sync");
   sleep(0.5);
   print "*** Reloading partition table from $dest_drive\n";
   set_status("Reloading new partition table from destination drive...");
-  system("umount /mnt/$dest_drive?* 2>&1");
-  system("sfdisk -R /dev/$dest_drive");
+  system("umount \Q/mnt/$dest_drive\E?* 2>&1");
+  system("sfdisk -R \Q/dev/$dest_drive\E");
   sleep(1);
   $status{'start'} = time();
   $status{'part_list'} = \@partlist;
@@ -714,20 +869,21 @@ sub update_restore_progress {
   my $part = $status{'part_list'}[$status{'current_part'}];
   chomp($part);
   my ($dn, $pn) = get_drivenum_partnum($part); 
-  my $src = $builder->get_object('restore_file')->get_filename();
-  my $dest_drive = $builder->get_object('restore_dest')->get_active_text();
+  my $src = MOUNT_POINT.$builder->get_object('restore_file')->get_text();
+  my $dest_drive = treeview_dev($builder->get_object('restore_dest'));
   $src =~ s/\.backup$//g;
-  $src =~ s/ /\\ /g;
   # See if the filehandle is open
   if (!defined($PROGRESS)) {
     # No command is being executed
     my $tool = "partclone.restore";
-    system("umount /mnt/$dest_drive$pn 2>&1; dd if=/dev/zero of=/dev/$dest_drive$pn bs=1K count=1000; sync");
+    my @srcfiles = glob("\Q$src\_part$pn\E.*");
+    @srcfiles = map(quotemeta, @srcfiles);
+    system("umount \Q/dev/$dest_drive$pn\E 2>&1; dd if=/dev/zero of=\Q/dev/$dest_drive$pn\E bs=1K count=1000; sync");
     set_status("Preparing to restore backup for Drive $dn, Part $pn...");
-    print "*** Processing $part using $tool...\n";
-    system("umount /dev/$part 2>&1");
-    print "*** Executing: ( cat /$src"."_part$pn.* | gzip -d -c | $tool -F -L /partclone.log -O /dev/$dest_drive$pn ) 2>&1 |\n";
-    open $PROGRESS, "( cat /$src"."_part$pn.* | gzip -d -c | $tool -F -L /partclone.log -O /dev/$dest_drive$pn ) 2>&1 |";
+    print "*** Processing $dest_drive$pn using $tool...\n";
+    system("umount \Q/dev/$dest_drive$pn\E 2>&1");
+    print "*** Executing: ( cat @srcfiles | gzip -d -c | $tool -F -L /partclone.log -O \Q/dev/$dest_drive$pn\E ) 2>&1 |\n";
+    open      $PROGRESS, "( cat @srcfiles | gzip -d -c | $tool -F -L /partclone.log -O \Q/dev/$dest_drive$pn\E ) 2>&1 |";
     sleep(0.5);
     return TRUE;
   } else {
@@ -790,12 +946,20 @@ sub update_restore_progress {
       # Reading super block
       print(">>> Calculating bitmap\n");
       set_status("Calculating bitmap for Drive $dn, Part $pn...");
-    } elsif ($data =~ m/Elapsed.+Rate.+/) {
+    } elsif ($data =~ m/current block.+total block.+/) {
+      # Secondary progress line introduced in partclone between 0.2.20 and 0.2.40
+      # Ignore.
+    } elsif ($data =~ m/Elapsed.+Remaining.+Completed.+/) {
       # Restore progress line
       my $elapsed = substr($data,9,8);
       my $remaining = substr($data,30,8);
       my $pct = substr($data,50,6);
-      my $rate = substr($data,64,13);
+      my $rate;
+      if ($data =~ m/Rate/) {
+        $rate = substr($data,64,13);
+      } else {
+        $rate = substr($data,59,15); # byte/min is long
+      }
       $pct =~ s/\s+//g;
       $rate =~ s/\s+//g;
       print "Elapsed time: *$elapsed* Remaining: *$remaining* Percent: *$pct* Rate: *$rate*\n";
@@ -824,7 +988,7 @@ sub update_restore_progress {
         set_status("Operation completed successfully.");
         my @lines = split(/\n/, $data);
         my $start = FALSE;
-        $builder->get_object('restore_button_cancel')->set_label('Exit');
+        $builder->get_object('button_cancel')->set_label('Exit');
         refresh_window();
         # Unmount stuff
         system("sync");
@@ -875,17 +1039,17 @@ sub usb_step {
     # USB Step 1
     find_local_drives();
     set_usb_dropdown('usb_dest');
-    $builder->get_object('usb_button_next')->set_sensitive(TRUE);
+    enable_next();
   } elsif ($step == 2) {
     # USB Step 2
-    $builder->get_object('usb_button_next')->hide();
-    my $target = $builder->get_object('usb_dest')->get_active_text();
+    hide_next();
+    my $target = treeview_dev($builder->get_object('usb_dest'));
     my $response = get_confirmation("Are you sure you want to overwrite all data on $target?");
     if ($response eq 'yes') {
       do_install($cdrom);
       message_box("Your USB drive is ready!\n\nPlease remember that you may need to press a key while the computer is starting in order to boot from the USB device."); 
       system("notify-send -i ".APP_ICON." 'USB installation complete.'");
-      $builder->get_object('usb_button_cancel')->set_label('Exit');
+      $builder->get_object('button_cancel')->set_label('Exit');
     } else {
       on_main_app_destroy();
     }
@@ -896,7 +1060,7 @@ sub usb_step {
 sub do_install {
   our $builder;
   my $cdrom = $_[0];
-  my $dev = "/dev/".$builder->get_object('usb_dest')->get_active_text();
+  my $dev = "/dev/".treeview_dev($builder->get_object('usb_dest'));
   my $mnt = "/mnt";
   my $isomnt = "$mnt/isomount";
   my $usbmnt = "$mnt/usbmount";
@@ -1109,6 +1273,8 @@ sub message_box {
 
 sub on_main_app_destroy {
   # Close the application and all backup binaries
+  # FIXME should save child PIDs and kill child processes instead.
+  # This makes Redo application unsuitable for general use outside a single purpose live CD.
   my $bins = `find /usr/sbin/ -type f -name 'partclone.*' -printf '%f\n'`;
   my @bins = split(/\n/, $bins);
   foreach (@bins) {
@@ -1172,25 +1338,39 @@ sub mount_data {
     if (/DEV/) {
       # Mount a regular drive
       $status{'mount_source'} =~ s/\|//g;
-      system("mount /dev/$status{'mount_source'} ".MOUNT_POINT);
-      print "* Executing: mount /dev/$status{'mount_source'} ".MOUNT_POINT."\n";
+      system(            "mount \Q/dev/$status{'mount_source'}\E ".MOUNT_POINT);
+      print "* Executing: mount \Q/dev/$status{'mount_source'}\E ".MOUNT_POINT."\n";
     } elsif (/SMB/) {
       # Mount a network share
+      my $args;
+      my $tmpfile = '';
       my @smbargs = ();
       if ($status{'mount_user'} ne '') { push(@smbargs, "username=".$status{'mount_user'}); }
       if ($status{'mount_pass'} ne '') { push(@smbargs, "password=".$status{'mount_pass'}); }
-      if ($status{'mount_domain'} ne '') { push(@smbargs, "dom=".$status{'mount_domain'}); }
-      my $args = join(',', @smbargs);
-      if ($args eq '') { $args = "guest"; }
-      system("mount.cifs '$status{'mount_source'}' ".MOUNT_POINT." -o $args");
+      if ($status{'mount_domain'} ne '') { push(@smbargs, "domain=".$status{'mount_domain'}); }
+      my $cred = join("\n", @smbargs);
+      if ($cred eq '') { $args = "guest"; }
+      else {
+        $tmpfile = `mktemp`;
+        chomp($tmpfile);
+        open(my $tmpfd, '>', $tmpfile);
+        print $tmpfd "$cred\n";
+        close($tmpfd);
+        $args = "credentials='$tmpfile'";
+        # If the user does not supply password moutnt would try to prompt for
+        # one locking up the application unless guest is specified.
+        if ($status{'mount_pass'} eq '') { $args = "$args,guest"; }
+      }
+      system("mount.cifs \Q$status{'mount_source'}\E ".MOUNT_POINT." -o $args");
+      if ($tmpfile ne '') { system(("shred", "-u",  $tmpfile));}
       print "* Executing: mount.cifs '$status{'mount_source'}' ".MOUNT_POINT." -o $args\n";
     } elsif (/FTP/) {
       # Mount an FTP server
       my $ftpargs = '';
       if ($status{'mount_user'} ne '') { $ftpargs = "-o user=".$status{'mount_user'}; }
       if ($status{'mount_pass'} ne '') { $ftpargs .= ":".$status{'mount_pass'}; }
-      system("curlftpfs $status{'mount_source'} ".MOUNT_POINT." $ftpargs");
-      print "* Executing: curlftpfs $status{'mount_source'} ".MOUNT_POINT." $ftpargs\n";
+      print "* Executing: curlftpfs \Q$status{'mount_source'}\E ".MOUNT_POINT." $ftpargs\n";
+      system(            "curlftpfs \Q$status{'mount_source'}\E ".MOUNT_POINT." $ftpargs");
     } else {
       fatal_crash("The device type '$status{'mount_type'}' is not valid.  Did you forget to select a backup location?");
     }
@@ -1217,7 +1397,6 @@ sub set_drive_dropdown {
   for my $drive (sort keys %drives) {
     $dev = $drives{$drive}{'device'};
     $desc = $drives{$drive}{'desc'};
-    if (length($desc)>MAX_WIDTH+3) { $desc = substr($desc,0,MAX_WIDTH).'...'; }
     if ((defined($_[1])) && ($_[1] eq 'usb')) {
       if ($drives{$drive}{'type'} eq 'usb') {
         $mdl->set($mdl->append, 0, $dev, 1, $desc);
@@ -1228,7 +1407,7 @@ sub set_drive_dropdown {
   }
   my $num_drives = $mdl->iter_n_children();
   if ($num_drives==0) { fatal_crash('No drives available.'); }
-  $cbo->set_active(0);
+  $cbo->get_selection->select_iter($mdl->get_iter_first);
   set_busy(FALSE);
 }
 
@@ -1268,12 +1447,13 @@ sub set_partition_dropdown {
       if (grep $_ eq $part, @blacklist) {
         print "*** Omitting backup source $part from destination list\n";
       } else {
-        if (length($part_desc)>MAX_WIDTH+3) { $part_desc = substr($part_desc,0,MAX_WIDTH).'...'; }
         $mdl->set($mdl->append, 0, "DEV|$part", 1, $part_desc);
       }
     }
   }
-  $cbo->set_active(0);
+  if ($mdl->get_iter_first) {
+    $cbo->get_selection->select_iter($mdl->get_iter_first);
+  }
 }
 
 sub set_share_dropdown {  
@@ -1296,7 +1476,6 @@ sub set_share_dropdown {
       $share_desc = "Shared folder $folder on $host";
     }
     if ((defined($desc))&&($desc ne '')) { $share_desc .= " ($desc)"; }
-    if (length($share_desc)>MAX_WIDTH+3) { $share_desc = substr($share_desc,0,MAX_WIDTH).'...'; }
     $mdl->set($mdl->append, 0, "$type|$share", 1, $share_desc);
   }
   $mdl->set($mdl->append, 0, "SMB|", 1, "Shared folder specified below");
