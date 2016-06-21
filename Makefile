@@ -1,7 +1,7 @@
 package:
 	rm -rf redobackup-deb redobackup_*.deb
 	git archive --prefix=redobackup-deb/ HEAD | tar -xf -
-	rm -rf redobackup-deb/etc/skel
+	cp -rf redobackup-deb/etc/skel redobackup-deb/root
 	rm -rf redobackup-deb/etc/default
 	rm -rf redobackup-deb/etc/rcS
 	rm -rf redobackup-deb/etc/rc.local
