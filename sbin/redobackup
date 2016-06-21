@@ -1635,6 +1635,7 @@ sub find_local_partitions {
       next if $line =~ m/^loop/;
       next if $line =~ m/^ramzswap/;
       next if $line =~ m/^dm-/;
+	  next if $line =~ m/^ram/;
       refresh_window();
       my ($partition, $fstype, $label, $size) = split(/\]\s\[/, $line);
       $partition = trim($partition);
