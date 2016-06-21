@@ -368,8 +368,8 @@ sub do_backup {
   $src_drive = "/dev/".$src_drive;
   # Save MBR
   system("dd if=\Q$src_drive\E of=\Q$dest/$file.mbr\E bs=32768 count=1");
-  system("sfdisk -dx \Q$src_drive\E > \Q$dest/$file.sfdisk\E");
-  my $ptab = `sfdisk -dx \Q$src_drive\E`;
+  system("sfdisk -d \Q$src_drive\E > \Q$dest/$file.sfdisk\E");
+  my $ptab = `sfdisk -d \Q$src_drive\E`;
   die "fdisk units must be sectors.\n" unless (fdisk_units($ptab) eq 'sectors');
   print "\t* MBR and partition table of $src_drive saved to $dest\n";
   # Save size of source drive in blocks
