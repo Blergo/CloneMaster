@@ -16,4 +16,4 @@ To build livecd:
 
 6/ Install .deb file. (dpkg -i [filename].deb && apt-get -f install)
 
-7/ Install and run "respin -dist" or one of the other remastersys continuations in order to create a livecd of your current system.
+7/ Install and run "PinguyBuilder" with the "dist" option, or use one of the other remastersys continuations in order to create a livecd of your current system.
