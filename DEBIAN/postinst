@@ -1,0 +1,3 @@
+#!/bin/bash
+systemctl enable getty@tty1.service
+exit 0
