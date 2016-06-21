@@ -1,4 +1,4 @@
-# CloneMasterCloneMaster
+# CloneMaster
 This is a continuation of Redo Backup. It is a work in progress.
 
 To build livecd:
