@@ -15,26 +15,11 @@ fi
 # set bg color
 xsetroot -solid "#333333"
 
-# turns NumLock on
-# numlockx on
-
-# eyes candy (composite)
-# myxcompmgr --startstop &
-
 # restore wallpaper
 nitrogen --restore &
 
 # network (gnome-network-manger)
 nm-applet &
-
-# power-manager
-#gnome-power-manager &
-
-# adeskbar (panel/systray)
-(sleep 1 && adeskbar)&
-
-# Mixer volume
-#(sleep 5 && volti)&
 
 # Start Redo Backup automatically
 redobackup &

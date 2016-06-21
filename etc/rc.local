@@ -14,10 +14,5 @@
 # Set the timezone to something other than UTC
 su root -c "echo 'US/Central' | tee /etc/timezone; dpkg-reconfigure --frontend noninteractive tzdata"
 
-# Copy the menus and other preferences to the root user's home directory
-su root -c "cp -R /etc/skel/.local /etc/skel/.config /etc/skel/.fonts.conf /etc/skel/.gtkrc-2.0 /root"
-
-# Start X
-su root -c startx
-
+su root -c "/usr/local/bin/cmpostinst.sh"
 exit 0
