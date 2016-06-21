@@ -6,7 +6,7 @@ To build livecd:
 
 1/ Minimal install of ubuntu server (working with 16.04, can be on physical hardware or VM). 
 
-2/ Enable root account "sudo psswd" and then login as root.
+2/ Enable root account "sudo psswd".
 
 3/ Install git, build-essential, autoconf, autogen, xorg, openbox. 
 
