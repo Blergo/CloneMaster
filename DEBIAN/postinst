@@ -1,5 +1,0 @@
-#!/bin/bash
-set -e
-
-systemctl enable getty@tty1.service
-exit 0
