@@ -14,6 +14,6 @@ To build livecd:
 
 5/ Run make to create .deb file. 
 
-6/ Install .deb file. 
+6/ Install .deb file. (dpkg -i [filename].deb && apt-get -f install)
 
 7/ Install and run "respin -dist" or one of the other remastersys continuations in order to create a livecd of your current system.
