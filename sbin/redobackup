@@ -533,7 +533,7 @@ sub update_backup_progress {
         set_status("Operation completed successfully.");
         my @lines = split(/\n/, $data);
         my $start = FALSE;
-        $builder->get_object('button_cancel')->set_label('Exit');
+        $builder->get_object('button_home')->set_label('Home');
         refresh_window();
         # Unmount stuff
         system("sync");
@@ -694,7 +694,7 @@ sub restore_step {
     refresh_window();
     do_restore();
     refresh_window();
-    $builder->get_object('button_cancel')->set_label('Exit');
+    $builder->get_object('button_home')->set_label('Home');
   }
   refresh_window();
 }
@@ -988,7 +988,7 @@ sub update_restore_progress {
         set_status("Operation completed successfully.");
         my @lines = split(/\n/, $data);
         my $start = FALSE;
-        $builder->get_object('button_cancel')->set_label('Exit');
+        $builder->get_object('button_home')->set_label('Home');
         refresh_window();
         # Unmount stuff
         system("sync");
@@ -1049,7 +1049,7 @@ sub usb_step {
       do_install($cdrom);
       message_box("Your USB drive is ready!\n\nPlease remember that you may need to press a key while the computer is starting in order to boot from the USB device."); 
       system("notify-send -i ".APP_ICON." 'USB installation complete.'");
-      $builder->get_object('button_cancel')->set_label('Exit');
+      $builder->get_object('button_home')->set_label('Home');
     } else {
       on_main_app_destroy();
     }
@@ -1139,6 +1139,12 @@ sub get_confirmation {
   my $response = $dialog->run;
   $dialog->destroy;
   return $response;
+}
+
+sub home_tab {
+  # Go to home tab
+  our $builder;
+  $builder->get_object('main_tabs')->set_current_page(0);
 }
 
 sub next_tab {
@@ -1635,6 +1641,7 @@ sub find_local_partitions {
       next if $line =~ m/^loop/;
       next if $line =~ m/^ramzswap/;
       next if $line =~ m/^dm-/;
+	  next if $line =~ m/^ram/;
       refresh_window();
       my ($partition, $fstype, $label, $size) = split(/\]\s\[/, $line);
       $partition = trim($partition);
