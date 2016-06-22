@@ -1141,6 +1141,12 @@ sub get_confirmation {
   return $response;
 }
 
+sub home_tab {
+  # Go to home tab
+  our $builder;
+  $builder->get_object('main_content')
+}
+
 sub next_tab {
   # Show the next tab of a Backup or Restore procedure
   our $builder;

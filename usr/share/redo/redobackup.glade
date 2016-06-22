@@ -1916,7 +1916,7 @@ You may only use letters, numbers, and dashes in your backup name.</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
                                 <property name="use_action_appearance">False</property>
-                                <signal name="clicked" handler="on_main_app_destroy" swapped="no"/>
+                                <signal name="clicked" handler="home_tab" swapped="no"/>
                               </object>
                               <packing>
                                 <property name="expand">False</property>
