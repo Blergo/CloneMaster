@@ -17,7 +17,7 @@
     <property name="can_focus">False</property>
     <property name="xpad">5</property>
     <property name="ypad">5</property>
-    <property name="pixbuf">button_backup.png</property>
+    <property name="pixbuf">cm_backup.png</property>
     <property name="icon-size">6</property>
   </object>
   <object class="GtkImage" id="button_image_restore">
@@ -25,7 +25,7 @@
     <property name="can_focus">False</property>
     <property name="xpad">5</property>
     <property name="ypad">5</property>
-    <property name="pixbuf">button_restore.png</property>
+    <property name="pixbuf">cm_restore.png</property>
     <property name="icon-size">6</property>
   </object>
   <object class="GtkListStore" id="drive_list">
