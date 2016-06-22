@@ -1910,8 +1910,8 @@ You may only use letters, numbers, and dashes in your backup name.</property>
                             <property name="spacing">10</property>
                             <property name="layout_style">end</property>
                             <child>
-                              <object class="GtkButton" id="button_cancel">
-                                <property name="label" translatable="yes">Cancel</property>
+                              <object class="GtkButton" id="button_home">
+                                <property name="label" translatable="yes">Home</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>

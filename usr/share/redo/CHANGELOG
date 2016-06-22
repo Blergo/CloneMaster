@@ -4,7 +4,8 @@
 -------------------------------------------------------------------------------
   * Rebranding to CloneMaster.
   * Removed some unused files.
-  * Cancel button returns to home screen isntead of closing application.
+  * Cancel button replaced with Home button. Now takes you back to home screen 
+	instead of closing application.
   
 
 
