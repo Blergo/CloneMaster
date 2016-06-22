@@ -1,13 +1,14 @@
-Package: redobackup
-Version: 1.0.2-3
-Maintainer: Michal Suchanek <hramrach@gmail.com>
+Package: CloneMaster
+Version: 0.09
+Maintainer: Owen Grein <beardedowen@gmail.com
 Depends: libgtk2-perl, libxml-simple-perl, fsarchiver, libmethod-signatures-simple-perl
 Recommends: os-prober
 Architecture: all
 License: GPL3
-Description: Redobackup application
- This package contains the redobackup application scripts and data files.
+Description: CloneMaster application
+ This package contains the CloneMaster application scripts and data files which are 
+ based of Redo Backup 1.0.2-3 scripts.
  Plymouth theme and system configuration used on the original CD are excluded.
  Includes patch to preset network share from /etc/redo_share.
  Puts partclone logs to target directory so can run as user.
-Homepage: http://redobackup.org
+Homepage:

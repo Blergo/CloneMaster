@@ -1,6 +1,6 @@
 # CloneMaster
  
-This is a continuation of Redo Backup. It is a work in progress.
+This is a continuation of Redo Backup and is based on their 1.0.2-3 codebase. It is a work in progress.
 
 To build livecd:
 
