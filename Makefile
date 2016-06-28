@@ -1,10 +1,8 @@
 package:
-	rm -rf redobackup-deb redobackup_*.deb
-	git archive --prefix=redobackup-deb/ HEAD | tar -xf -
-	cp -rf redobackup-deb/etc/skel redobackup-deb/root
-	rm -rf redobackup-deb/etc/skel
-	rm -rf redobackup-deb/etc/default
-	rm -rf redobackup-deb/etc/rcS
-	dpkg-deb -b redobackup-deb
-	dpkg-name redobackup-deb.deb
-	rm -rf redobackup-deb
+	rm -rf CloneMaster-deb CloneMaster_*.deb
+	git archive --prefix=CloneMaster-deb/ HEAD | tar -xf -
+	cp -rf CloneMaster-deb/etc/skel CloneMaster-deb/root
+	rm -rf CloneMaster-deb/etc/skel
+	dpkg-deb -b CloneMaster-deb
+	dpkg-name CloneMaster-deb.deb
+	rm -rf CloneMaster-deb
