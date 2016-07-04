@@ -29,6 +29,7 @@ use IO::Handle;
 use File::Basename;
 use Method::Signatures::Simple;
 
+
 ##### Constants found in our program ###################################
 use constant VERSION       => `cat /usr/share/clonemaster/VERSION`;
 use constant CD_LABEL      => `cat /usr/share/clonemaster/TITLE`;
