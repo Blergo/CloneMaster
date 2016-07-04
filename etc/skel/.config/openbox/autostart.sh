@@ -22,7 +22,7 @@ nitrogen --restore &
 nm-applet &
 
 # Start Redo Backup automatically
-redobackup &
+clonemaster &
 
 # Maximize all windows
 maximus &

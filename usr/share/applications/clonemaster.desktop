@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=Redobackup
-X-GNOME-FullName=Redo Backup and Restore
+Name=CloneMaster
+X-GNOME-FullName=CloneMaster
 Comment=Create and restore whole disk drive backups
-Exec=sudo /sbin/redobackup
+Exec=sudo /sbin/clonemaster
 Icon=redo-icon
 Terminal=false
 Type=Application
