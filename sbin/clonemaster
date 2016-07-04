@@ -31,12 +31,12 @@ use Method::Signatures::Simple;
 
 
 ##### Constants found in our program ###################################
-use constant VERSION       => `cat /usr/share/redo/VERSION`;
-use constant CD_LABEL      => `cat /usr/share/redo/TITLE`;
+use constant VERSION       => `cat /usr/share/clonemaster/VERSION`;
+use constant CD_LABEL      => `cat /usr/share/clonemaster/TITLE`;
 use constant MOUNT_POINT   => "/mnt/backup";
-use constant DATA_DIR      => "/usr/share/redo/";
-use constant APP_ICON      => DATA_DIR."redobackup-icon.png";
-use constant GLADE_UI      => "redobackup.glade";
+use constant DATA_DIR      => "/usr/share/clonemaster/";
+use constant APP_ICON      => DATA_DIR."cm_icon.png";
+use constant GLADE_UI      => "clonemaster.glade";
 use constant FS_SUPPORT    => ( "ext2",
                                 "ext3",
                                 "ext4",
