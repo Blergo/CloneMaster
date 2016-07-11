@@ -1147,8 +1147,6 @@ sub home_tab {
   foreach (@bins) {
     system('( killall -9 $_ 2>&1 ) > /dev/null');
   }
-  our $PROGRESS;
-  close($PROGRESS);
   our $builder;
   $builder->get_object('main_tabs')->set_current_page(0);
 }
