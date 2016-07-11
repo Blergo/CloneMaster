@@ -1142,7 +1142,7 @@ sub get_confirmation {
 }
 
 sub home_tab {
-  system("kill -9 `ps -ef | grep partclone | grep -v grep | awk '{print $2}'`");
+  system("kill -9 $(ps -ef | grep partclone | grep -v grep | awk '{print $2}')");
   our $builder;
   $builder->get_object('main_tabs')->set_current_page(0);
 }
