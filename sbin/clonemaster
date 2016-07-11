@@ -1142,11 +1142,7 @@ sub get_confirmation {
 }
 
 sub home_tab {
-  my $bins = `find /usr/sbin/ -type f -name 'partclone.*' -printf '%f\n'`;
-  my @bins = split(/\n/, $bins);
-  foreach (@bins) {
-    system('( killall -9 $_ 2>&1 ) > /dev/null');
-  }
+  system("kill -9 `ps -ef | grep partclone | grep -v grep | awk '{print $2}'`");
   our $builder;
   $builder->get_object('main_tabs')->set_current_page(0);
 }
