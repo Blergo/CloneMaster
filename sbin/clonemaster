@@ -67,6 +67,7 @@ use constant USB_STEPS     => ( "Step 1: Select Destination Drive",
                                 "Step 2: Install to USB Drive" );
 
 
+my $step;
 
 sub default_share_name {
     my $share = `cat /etc/redo/share`;
@@ -141,7 +142,6 @@ exit(0);
 
 
 ##### Subroutines and callbacks ########################################
-our $step;
 
 sub main {
   # Start the main application
@@ -239,7 +239,7 @@ sub backup_mode {
 
 sub backup_step {
   # Advance to the next Backup Step
-  if (!defined($step)) { $step = 1; }
+  if (!defined($step)) {$step = 1; }
   our $builder;
   our %status;
   set_main_title("Backup");
