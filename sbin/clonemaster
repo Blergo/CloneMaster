@@ -141,7 +141,7 @@ exit(0);
 
 
 ##### Subroutines and callbacks ########################################
-my $step = $_[0];
+our $step;
 
 sub main {
   # Start the main application
@@ -1161,7 +1161,7 @@ sub reboot {
 }
 
 sub home_tab {
-  if (!defined($step)) { $step = 0; }
+  $step = 0;
   system("kill -9 $(ps -ef | grep partclone | grep -v grep | awk '{print $2}')");
   our $builder;
   $builder->get_object('main_tabs')->set_current_page(0);
