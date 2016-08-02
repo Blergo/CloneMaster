@@ -1161,7 +1161,8 @@ sub reboot {
 }
 
 sub home_tab {
-  set_main_title("---");
+  set_main_title("Welcome");
+  set_subtitle("Select an Option");
   system("kill -9 $(ps -ef | grep partclone | grep -v grep | awk '{print $2}')");
   our $builder;
   $builder->get_object('main_tabs')->set_current_page(0);
