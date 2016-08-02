@@ -66,9 +66,6 @@ use constant RESTORE_STEPS => ( "Step 1: Select Source Drive",
 use constant USB_STEPS     => ( "Step 1: Select Destination Drive",
                                 "Step 2: Install to USB Drive" );
 
-
-my $step;
-
 sub default_share_name {
     my $share = `cat /etc/redo/share`;
     chomp $share;
