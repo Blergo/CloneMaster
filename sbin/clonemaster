@@ -171,6 +171,12 @@ sub main {
   Gtk2->main;
 }
 
+sub hide_reboot {
+  our $builder;
+  $builder->get_object('button_reboot')->hide();
+  $builder->get_object('button_reboot')->set_sensitive(FALSE);
+}
+
 sub enable_next {
   our $builder;
   $builder->get_object('button_next')->set_sensitive(TRUE);
@@ -239,23 +245,27 @@ sub backup_step {
   set_subtitle((BACKUP_STEPS)[$step-1]);
   if ($step == 1) {
     # Backup Step 1
+	hide_reboot();
     find_local_drives();
     print_drive_list();
     set_drive_dropdown('backup_source');
     enable_next();
   } elsif ($step == 2) {
     # Backup Step 2
+	hide_reboot();
     $status{'backup_drive'} = treeview_dev($builder->get_object('backup_source'));
     set_partition_list('backup_partitions', $status{'backup_drive'});
     enable_next();
   } elsif ($step == 3) {
     # Backup Step 3
+	hide_reboot();
     backup_dest_changed();
     set_partition_dropdown('backup_dest_local');
     set_share_dropdown('backup_dest_network');
     enable_next();
   } elsif ($step == 4) {
     # Backup Step 4
+	hide_reboot();
     disable_next();
     if ($builder->get_object('backup_dest_use_local')->get_active()) {
       my ($model, $iter) = $builder->get_object('backup_dest_local')->get_selection()->get_selected();
@@ -285,6 +295,7 @@ sub backup_step {
     }
   } elsif ($step == 5) {
     # Backup Step 5
+	hide_reboot();
     my (undef,undef,undef,$d,$m,$y,undef,undef,undef) = localtime(time);
     $y = sprintf("%04d", $y+1900);
     $m = sprintf("%02d", $m+1);
@@ -652,6 +663,7 @@ sub restore_step {
   set_subtitle((RESTORE_STEPS)[$step-1]);
   if ($step == 1) {
     # Restore Step 1
+	hide_reboot();
     restore_source_changed();
     find_local_drives();
     set_partition_dropdown('restore_source_local');
@@ -659,6 +671,7 @@ sub restore_step {
     enable_next();
   } elsif ($step == 2) {
     # Restore Step 2
+	hide_reboot();
     disable_next();
     if ($builder->get_object('restore_source_use_local')->get_active()) {
       my ($model, $iter) = $builder->get_object('restore_source_local')->get_selection()->get_selected();
@@ -685,6 +698,7 @@ sub restore_step {
     }
   } elsif ($step == 3) {
     # Restore Step 4
+	hide_reboot();
     set_drive_dropdown('restore_dest');
     enable_next();
   } elsif ($step == 4) {

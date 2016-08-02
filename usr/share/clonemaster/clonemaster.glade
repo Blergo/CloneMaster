@@ -1944,7 +1944,7 @@ You may only use letters, numbers, and dashes in your backup name.</property>
                             </child>
 							<child>
                               <object class="GtkButton" id="button_reboot">
-                                <property name="label" translatable="yes">Home</property>
+                                <property name="label" translatable="yes">Reboot</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
