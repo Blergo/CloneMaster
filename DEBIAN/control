@@ -1,5 +1,5 @@
 Package: CloneMaster
-Version: 0.12
+Version: 0.11
 Maintainer: Owen Grein <beardedowen@gmail.com
 Depends: libgtk2-perl, libxml-simple-perl, fsarchiver, libmethod-signatures-simple-perl
 Recommends: os-prober
