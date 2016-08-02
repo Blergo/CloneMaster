@@ -1042,6 +1042,7 @@ sub usb_mode {
 
 sub usb_step {
   # Advance to the next USB Installer Step
+  my $step = $_[0];	
   if (!defined($step)) { $step = 1; }
   our $builder;
   set_main_title("Install");
