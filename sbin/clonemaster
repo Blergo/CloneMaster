@@ -1160,6 +1160,7 @@ sub reboot {
 }
 
 sub home_tab {
+  my $step = $_[0];
   system("kill -9 $(ps -ef | grep partclone | grep -v grep | awk '{print $2}')");
   our $builder;
   $builder->get_object('main_tabs')->set_current_page(0);
