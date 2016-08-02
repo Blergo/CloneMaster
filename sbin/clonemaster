@@ -239,7 +239,7 @@ sub backup_mode {
 
 sub backup_step {
   # Advance to the next Backup Step
-  $step = $_[0];
+  our $step = $_[0];
   if (!defined($step)) { $step = 1; }
   our $builder;
   our %status;
@@ -657,7 +657,7 @@ sub restore_mode {
 
 sub restore_step {
   # Advance to the next Restore Step
-  $step = $_[0];
+  our $step = $_[0];
   if (!defined($step)) { $step = 1; }
   our $builder;
   our %status;
@@ -1164,7 +1164,7 @@ sub reboot {
 }
 
 sub home_tab {
-  $step = $_[0];
+  our $step = $_[0];
   system("kill -9 $(ps -ef | grep partclone | grep -v grep | awk '{print $2}')");
   our $builder;
   $builder->get_object('main_tabs')->set_current_page(0);
