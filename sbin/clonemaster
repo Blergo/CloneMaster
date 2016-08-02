@@ -533,7 +533,7 @@ sub update_backup_progress {
         set_status("Operation completed successfully.");
         my @lines = split(/\n/, $data);
         my $start = FALSE;
-        $builder->get_object('button_home')->set_label('Home');
+        $builder->get_object('button_reboot')->set_label('Reboot');
         refresh_window();
         # Unmount stuff
         system("sync");
@@ -988,7 +988,7 @@ sub update_restore_progress {
         set_status("Operation completed successfully.");
         my @lines = split(/\n/, $data);
         my $start = FALSE;
-        $builder->get_object('button_home')->set_label('Home');
+        $builder->get_object('button_reboot')->set_label('Reboot');
         refresh_window();
         # Unmount stuff
         system("sync");
@@ -1139,6 +1139,10 @@ sub get_confirmation {
   my $response = $dialog->run;
   $dialog->destroy;
   return $response;
+}
+
+sub reboot {
+  system("sudo shutdown -r now");
 }
 
 sub home_tab {
