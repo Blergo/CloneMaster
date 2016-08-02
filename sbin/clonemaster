@@ -66,6 +66,8 @@ use constant RESTORE_STEPS => ( "Step 1: Select Source Drive",
 use constant USB_STEPS     => ( "Step 1: Select Destination Drive",
                                 "Step 2: Install to USB Drive" );
 
+my $step = $_[0];	
+
 sub default_share_name {
     my $share = `cat /etc/redo/share`;
     chomp $share;
@@ -235,7 +237,7 @@ sub backup_mode {
 
 sub backup_step {
   # Advance to the next Backup Step
-  my $step = $_[0];
+  $step = $_[0];
   if (!defined($step)) { $step = 1; }
   our $builder;
   our %status;
@@ -653,7 +655,7 @@ sub restore_mode {
 
 sub restore_step {
   # Advance to the next Restore Step
-  my $step = $_[0];
+  $step = $_[0];
   if (!defined($step)) { $step = 1; }
   our $builder;
   our %status;
@@ -1041,7 +1043,7 @@ sub usb_mode {
 
 sub usb_step {
   # Advance to the next USB Installer Step
-  my $step = $_[0];
+  $step = $_[0];
   if (!defined($step)) { $step = 1; }
   our $builder;
   set_main_title("Install");
@@ -1160,7 +1162,7 @@ sub reboot {
 }
 
 sub home_tab {
-  my $step = $_[0];
+  $step = $_[0];
   system("kill -9 $(ps -ef | grep partclone | grep -v grep | awk '{print $2}')");
   our $builder;
   $builder->get_object('main_tabs')->set_current_page(0);
