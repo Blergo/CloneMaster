@@ -141,7 +141,7 @@ exit(0);
 
 
 ##### Subroutines and callbacks ########################################
-our $step;	
+my $step = $_[0];
 
 sub main {
   # Start the main application
@@ -239,7 +239,6 @@ sub backup_mode {
 
 sub backup_step {
   # Advance to the next Backup Step
-  our $step = $_[0];
   if (!defined($step)) { $step = 1; }
   our $builder;
   our %status;
@@ -657,7 +656,6 @@ sub restore_mode {
 
 sub restore_step {
   # Advance to the next Restore Step
-  our $step = $_[0];
   if (!defined($step)) { $step = 1; }
   our $builder;
   our %status;
@@ -1045,7 +1043,6 @@ sub usb_mode {
 
 sub usb_step {
   # Advance to the next USB Installer Step
-  $step = $_[0];
   if (!defined($step)) { $step = 1; }
   our $builder;
   set_main_title("Install");
@@ -1164,7 +1161,7 @@ sub reboot {
 }
 
 sub home_tab {
-  our $step = $_[0];
+  if (!defined($step)) { $step = 0; }
   system("kill -9 $(ps -ef | grep partclone | grep -v grep | awk '{print $2}')");
   our $builder;
   $builder->get_object('main_tabs')->set_current_page(0);
