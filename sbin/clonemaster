@@ -139,6 +139,7 @@ exit(0);
 
 
 ##### Subroutines and callbacks ########################################
+
 sub main {
   # Start the main application
   our $builder;
@@ -169,6 +170,12 @@ sub main {
   if ($mode eq 'restore') { restore_mode(); }
   if ($mode eq 'install') { usb_mode(); }
   Gtk2->main;
+}
+
+sub hide_reboot {
+  our $builder;
+  $builder->get_object('button_reboot')->hide();
+  $builder->get_object('button_reboot')->set_sensitive(FALSE);
 }
 
 sub enable_next {
@@ -229,8 +236,8 @@ sub backup_mode {
 
 sub backup_step {
   # Advance to the next Backup Step
-  my $step = $_[0];
-  if (!defined($step)) { $step = 1; }
+  my $step = $_[0];	
+  if (!defined($step)) {$step = 1; }
   our $builder;
   our %status;
   set_main_title("Backup");
@@ -239,23 +246,27 @@ sub backup_step {
   set_subtitle((BACKUP_STEPS)[$step-1]);
   if ($step == 1) {
     # Backup Step 1
+	hide_reboot();
     find_local_drives();
     print_drive_list();
     set_drive_dropdown('backup_source');
     enable_next();
   } elsif ($step == 2) {
     # Backup Step 2
+	hide_reboot();
     $status{'backup_drive'} = treeview_dev($builder->get_object('backup_source'));
     set_partition_list('backup_partitions', $status{'backup_drive'});
     enable_next();
   } elsif ($step == 3) {
     # Backup Step 3
+	hide_reboot();
     backup_dest_changed();
     set_partition_dropdown('backup_dest_local');
     set_share_dropdown('backup_dest_network');
     enable_next();
   } elsif ($step == 4) {
     # Backup Step 4
+	hide_reboot();
     disable_next();
     if ($builder->get_object('backup_dest_use_local')->get_active()) {
       my ($model, $iter) = $builder->get_object('backup_dest_local')->get_selection()->get_selected();
@@ -285,6 +296,7 @@ sub backup_step {
     }
   } elsif ($step == 5) {
     # Backup Step 5
+	hide_reboot();
     my (undef,undef,undef,$d,$m,$y,undef,undef,undef) = localtime(time);
     $y = sprintf("%04d", $y+1900);
     $m = sprintf("%02d", $m+1);
@@ -533,7 +545,7 @@ sub update_backup_progress {
         set_status("Operation completed successfully.");
         my @lines = split(/\n/, $data);
         my $start = FALSE;
-        $builder->get_object('button_home')->set_label('Home');
+        $builder->get_object('button_reboot')->set_label('Reboot');
         refresh_window();
         # Unmount stuff
         system("sync");
@@ -642,7 +654,7 @@ sub restore_mode {
 
 sub restore_step {
   # Advance to the next Restore Step
-  my $step = $_[0];
+  my $step = $_[0];	
   if (!defined($step)) { $step = 1; }
   our $builder;
   our %status;
@@ -652,6 +664,7 @@ sub restore_step {
   set_subtitle((RESTORE_STEPS)[$step-1]);
   if ($step == 1) {
     # Restore Step 1
+	hide_reboot();
     restore_source_changed();
     find_local_drives();
     set_partition_dropdown('restore_source_local');
@@ -659,6 +672,7 @@ sub restore_step {
     enable_next();
   } elsif ($step == 2) {
     # Restore Step 2
+	hide_reboot();
     disable_next();
     if ($builder->get_object('restore_source_use_local')->get_active()) {
       my ($model, $iter) = $builder->get_object('restore_source_local')->get_selection()->get_selected();
@@ -685,6 +699,7 @@ sub restore_step {
     }
   } elsif ($step == 3) {
     # Restore Step 4
+	hide_reboot();
     set_drive_dropdown('restore_dest');
     enable_next();
   } elsif ($step == 4) {
@@ -988,7 +1003,7 @@ sub update_restore_progress {
         set_status("Operation completed successfully.");
         my @lines = split(/\n/, $data);
         my $start = FALSE;
-        $builder->get_object('button_home')->set_label('Home');
+        $builder->get_object('button_reboot')->set_label('Reboot');
         refresh_window();
         # Unmount stuff
         system("sync");
@@ -1027,7 +1042,7 @@ sub usb_mode {
 
 sub usb_step {
   # Advance to the next USB Installer Step
-  my $step = $_[0];
+  my $step = $_[0];	
   if (!defined($step)) { $step = 1; }
   our $builder;
   set_main_title("Install");
@@ -1141,8 +1156,14 @@ sub get_confirmation {
   return $response;
 }
 
+sub reboot {
+  system("sudo shutdown -r now");
+}
+
 sub home_tab {
-  # Go to home tab
+  set_main_title("Welcome");
+  set_subtitle("Select an Option");
+  system("kill -9 $(ps -ef | grep partclone | grep -v grep | awk '{print $2}')");
   our $builder;
   $builder->get_object('main_tabs')->set_current_page(0);
 }
