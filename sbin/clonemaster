@@ -141,7 +141,7 @@ exit(0);
 
 
 ##### Subroutines and callbacks ########################################
-my $step;	
+our $step;	
 
 sub main {
   # Start the main application
