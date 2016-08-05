@@ -236,7 +236,7 @@ sub backup_mode {
 
 sub backup_step {
   # Advance to the next Backup Step
-  my $step = $_[0];	
+  my $step = @_;	
   if (!defined($step)) {$step = 1; }
   our $builder;
   our %status;
@@ -654,7 +654,7 @@ sub restore_mode {
 
 sub restore_step {
   # Advance to the next Restore Step
-  my $step = $_[0];	
+  my $step = @_;	
   if (!defined($step)) { $step = 1; }
   our $builder;
   our %status;
@@ -1042,7 +1042,7 @@ sub usb_mode {
 
 sub usb_step {
   # Advance to the next USB Installer Step
-  my $step = $_[0];	
+  my $step = @_;	
   if (!defined($step)) { $step = 1; }
   our $builder;
   set_main_title("Install");
