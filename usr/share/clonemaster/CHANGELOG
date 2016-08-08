@@ -1,7 +1,9 @@
 -------------------------------------------------------------------------------
   Version 0.12 ()
 -------------------------------------------------------------------------------
-
+  * Fixed Issue #28, Pressing Home button and then backup or restore button
+    will now start the process from step 1 again isntead of from the last step
+	you were on before clicking the Home button. 
 
 
 -------------------------------------------------------------------------------
@@ -24,4 +26,4 @@
   Version 0.09 (22/06/2016)
 -------------------------------------------------------------------------------
   * Initial release aimed at porting Redo Backup 1.0.2 to run on modern 
-  Ubuntu versions.
+    Ubuntu versions.
