@@ -784,7 +784,6 @@ sub do_restore {
   my $src = MOUNT_POINT.$builder->get_object('restore_file')->get_text();
   my $dest_drive = treeview_dev($builder->get_object('restore_dest'));
   $src =~ s/\.backup$//g;
-  $src =~ s/ /\\ /g;
   my $src_mbr = $src.'.mbr';
   my $src_parts = $src.'.backup';
   $src_parts =~ s/\\//g;
@@ -898,8 +897,8 @@ sub update_restore_progress {
     set_status("Preparing to restore backup for Drive $dn, Part $pn...");
     print "*** Processing $dest_drive$pn using $tool...\n";
     system("umount \Q/dev/$dest_drive$pn\E 2>&1");
-    print "*** Executing: ( cat @srcfiles | gzip -d -c | $tool -F -L /partclone.log -O \Q/dev/$dest_drive$pn\E ) 2>&1 |\n";
-    open      $PROGRESS, "( cat @srcfiles | gzip -d -c | $tool -F -L /partclone.log -O \Q/dev/$dest_drive$pn\E ) 2>&1 |";
+    print "*** Executing: ( cat @srcfiles | gzip -d -c | dd obs=1M | $tool -F -L /partclone.log -O \Q/dev/$dest_drive$pn\E ) 2>&1 |\n";
+    open      $PROGRESS, "( cat @srcfiles | gzip -d -c | dd obs=1M | $tool -F -L /partclone.log -O \Q/dev/$dest_drive$pn\E ) 2>&1 |";
     sleep(0.5);
     return TRUE;
   } else {
