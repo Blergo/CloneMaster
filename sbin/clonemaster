@@ -445,7 +445,7 @@ sub update_backup_progress {
       if (!defined($char)) {
         return 1;
       } else {
-        if (($char eq "\n") || ($char eq "\r" || (ord($char)==27)) {
+        if (($char eq "\n") || ($char eq "\r")) {
           undef($char);
         } else {
           $status{'command_output'} .= $char;
